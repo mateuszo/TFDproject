@@ -6,14 +6,14 @@ public class Prepare extends Message {
 	 public int v; // view number
 	 public int n; // op number
 	 public int k; // commit number
-	 public String m; // message from client
+	 public Request r; // request from client
 
 
 	 // returns 1 on error, 0 on success
 	 public int fromString(String[] data) {
 
 		  // check if there are enough elements to decode...
-		  if (data.length != 5) {
+		  if (data.length != 8) {
 
 				return 1;
 		  }
@@ -44,8 +44,12 @@ public class Prepare extends Message {
             
              return 1;
             }
+        
+		  r = new Request();
+		  
+		  String[] forRequest = {data[4], data[5], data[6], data[7]};
 
-		  m = data[4];
+            r.fromString(forRequest);
 
 		  return 0;
 	 }
@@ -53,6 +57,6 @@ public class Prepare extends Message {
 	 public String toString() {
 
 
-		  return "PREPARE;" + v + ";" + n + ";" + k + ";" + m;
+		  return "PREPARE" + v + ";" + n + ";" + k + ";" + r.toString();
 	 }
 }
