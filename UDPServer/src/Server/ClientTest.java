@@ -1,6 +1,6 @@
 package Server;
 
-// Fig. 24.12: ClientTest.java
+
 // Tests the Client class.
 import javax.swing.JFrame;
 
