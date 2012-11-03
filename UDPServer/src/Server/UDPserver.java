@@ -110,7 +110,7 @@ public class UDPserver extends JFrame {
 				}
 				else if (test.getClass().getName().equals("Message.PrepareOk")){
 						
-					
+					displayMessage("\nPrepareOK received!");
 					processPrepareOk((PrepareOk) test, receivePacket);		//30-10-2012 - RO
 						
 				}
