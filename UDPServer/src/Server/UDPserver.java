@@ -2,6 +2,8 @@ package Server;
 
 
 import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -9,10 +11,14 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
 import Message.Message;
@@ -30,6 +36,7 @@ public class UDPserver extends JFrame {
 	 
 	private static final long serialVersionUID = 1L;
 	private JTextArea displayArea; // displays packets received
+	private JTextField enterField; // for entering messages
 	private DatagramSocket socket; // socket to connect to client
 	//private String config[][]={{"localhost","1024"},{"localhost","1025"},{"localhost","1026"}};
 	private int[] ports = {1020,1021,1022};
@@ -46,6 +53,21 @@ public class UDPserver extends JFrame {
 		 state.client_table = new HashMap<Integer,ClientTab>();
 		 state.log = new ArrayList();
 		 state.prepareOk_counter = new HashMap<Integer,Integer>();	//30-10-2012 - RO
+		 
+		 enterField = new JTextField( "Type command here" );
+		 enterField.addActionListener(
+			new ActionListener()
+				{
+					public void actionPerformed( ActionEvent event )
+					{
+						//command
+						String command = event.getActionCommand();
+						executeCommand(command);
+					} // end actionPerformed
+				} // end inner class
+			); // end call to addActionListener
+			
+		 add( enterField, BorderLayout.NORTH );
 		 
 		 displayArea = new JTextArea(); // create displayArea
 		 add( new JScrollPane( displayArea ), BorderLayout.CENTER );
@@ -94,7 +116,7 @@ public class UDPserver extends JFrame {
 						 "\nType:\n\t"+ test.getClass().getName());
 					
 				 //ACTION RECOGNITION
-				 //checking the type of the received messages and running appropriate Action
+				 //checks the type of the received messages and runs appropriate Action
 				 if(test.getClass().getName().equals("Message.Request")){
 					 
 					 displayMessage("\nRequest received!");
@@ -115,7 +137,7 @@ public class UDPserver extends JFrame {
 						
 				}
 				else{
-					displayMessage("\nInvaild message received!");  // if the message type is invailid
+					displayMessage("\nInvaild message received!");  // if the message type is invalid
 				}
 			} // end try
 			catch ( IOException ioException ){
@@ -256,7 +278,7 @@ public class UDPserver extends JFrame {
 		}
 		else{ 		//if not put new client tab into state
 			cli_tab.c_id = request.c;
-			cli_tab.c_add=cli_add.getHostName();
+			cli_tab.c_add=cli_add.getHostName();   
 			cli_tab.c_port=cli_port;
 			state.client_table.put(request.c, cli_tab);
 		}
@@ -284,12 +306,34 @@ public class UDPserver extends JFrame {
 		
 	//Prepare processor
 	private void processPrepare(Prepare prep_msg){
-			
+		
+		Request request = prep_msg.r;  // gets request from the prepare message
+		ClientTab cli_tab = state.new ClientTab();			//initialize client table
+		
 		if(prep_msg.n==state.op_number){ //Checks if the op-number is correct
-			state.op_number++;
-			//TODO
+			
+			
+			state.op_number++; //increment op_number
+						
 			//update log
-			//update client-table
+			state.log.add(request);
+			
+			
+			//update client table
+			if(state.client_table.containsKey(request.c)){ 		//checks if client table exists for this client
+				cli_tab =  state.client_table.get(request.c);	//loads client table
+			}
+			else{ 		//if not put new client tab into state
+				cli_tab.c_id = request.c;
+				//cli_tab.c_add=cli_add.getHostName(); // does the replicas need the clients addresses and port?
+				//cli_tab.c_port=cli_port;
+				state.client_table.put(request.c, cli_tab);
+			}
+			
+			state.log.add(request); //add request to the log
+			cli_tab.recent = request.s; //updates the sequence number in the client table
+			state.client_table.put(request.c, cli_tab); // update the VR state
+			
 			try{
 				sendPrepareOkToPrimary(prep_msg); //sendPrepareToReplicas caused by the request
 			}
@@ -355,6 +399,65 @@ public class UDPserver extends JFrame {
 	private Request getReply(int log_idx){
 		
 		return state.log.get(log_idx);
+		
+	}
+	
+	//executes commands given to the server
+	private void executeCommand(String command) {
+		switch (command){
+			case "op": // display op-number
+				displayArea.append( "\n Current op-number is:" + state.op_number +"\n" ); 
+				break;
+			case "log": //displays the log
+				displayLog(); 
+				break;
+			case "client-tab":
+				displayClientTable();
+				break;
+			case "info":
+				displayMessage( "\nState:" + state.status +
+						 		"\nView number: "+ state.view_number +
+						 		"\nReplica number: "+ state.rep_number +
+						 		"\nOp number: "+ state.op_number + "\n");
+				break;
+			default:
+				displayArea.append("\nCommand not supported\n");
+				break;
+		}
+		
+		
+	}
+	
+	//displays client table
+	private void displayClientTable() {
+		displayArea.append("\nCurrent client table:\n");
+		for (ClientTab value : state.client_table.values()) {
+			displayMessage( "\nClient:" + value.c_id +
+			 		"\nRecen request: "+ value.recent +
+			 		"\nCommited: "+ value.commited +
+			 		"\nAddress&port: "+ value.c_add + ":" + value.c_port + "\n");
+		}   
+		
+	}
+
+	//method that displays current log
+	private void displayLog() {
+		
+		displayArea.append( "\n Current log:\n" );
+		
+		Iterator it = state.log.iterator(); //initialize iterator for log list
+		int i=0; //
+		while (it.hasNext()) {
+			
+			
+		    Request val = (Request) it.next(); //get next request from log
+		    //display all information about the request
+		    displayMessage( "\nIndex:" + i +
+					 		"\nClient: "+ val.c +
+					 		"\nSequence no: "+ val.s +
+					 		"\nOperation: "+ val.op + "\n");
+		    i++;
+		}
 		
 	}
 	

@@ -13,7 +13,7 @@ public class VRstate {
 	public String status; // status: normal/view change/recovering
 	public int op_number; //number assigned to the most recent request
 	public int commit_number; // op_number of last committed request
-	public Map<Integer,ClientTab> client_table; //list of client table objects
+	public Map<Integer,ClientTab> client_table; //list of client table objects keys are clients ids
 	public List<Request> log; //log of requests
 	public Map<Integer,Integer> prepareOk_counter; // <op_number of the request, okcount>
 	
