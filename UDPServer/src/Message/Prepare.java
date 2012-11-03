@@ -57,6 +57,6 @@ public class Prepare extends Message {
 	 public String toString() {
 
 
-		  return "PREPARE" + v + ";" + n + ";" + k + ";" + r.toString();
+		  return "PREPARE" + ";" + v + ";" + n + ";" + k + ";" + r.toString();
 	 }
 }

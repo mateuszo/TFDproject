@@ -110,12 +110,12 @@ public class UDPserver extends JFrame {
 				}
 				else if (test.getClass().getName().equals("Message.PrepareOk")){
 						
-					displayMessage("\nPrepareOK received!");
+					
 					processPrepareOk((PrepareOk) test, receivePacket);		//30-10-2012 - RO
 						
 				}
 				else{
-					sendPacketToClient( receivePacket ); // send packet to client
+					displayMessage("\nInvaild message received!");  // if the message type is invailid
 				}
 			} // end try
 			catch ( IOException ioException ){
