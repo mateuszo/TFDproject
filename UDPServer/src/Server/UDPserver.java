@@ -152,7 +152,7 @@ public class UDPserver extends JFrame {
 		//for loop should be here
 		//create prepare message
 		Prepare prepare_msg = new Prepare();
-		prepare_msg.m = received_req.op; //take message from the client 
+		prepare_msg.r = received_req; //take message from the client 
 		prepare_msg.v = state.view_number; //send view number
 		prepare_msg.n = state.op_number; //and current op_number
 		prepare_msg.k = state.commit_number;
