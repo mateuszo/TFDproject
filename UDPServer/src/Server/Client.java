@@ -96,11 +96,11 @@ public class Client extends JFrame
 				
 				
 				// display packet contents
-				displayMessage( "\nPacket received:" + 
+				displayMessage( "\n\tPacket received:" + 
 						"\nFrom host: "+ receivePacket.getAddress() +
 						"\nHost port: "+ receivePacket.getPort() +
-						"\nLength: "+ receivePacket.getLength() +
-						"\nContaining:\n\t" + new String( receivePacket.getData(), 0, receivePacket.getLength() ));
+						//"\nLength: "+ receivePacket.getLength() +
+						"\nContaining:" + new String( receivePacket.getData(), 0, receivePacket.getLength() ) +"\n");
 			} // end try
 			catch ( IOException exception )
 			{
