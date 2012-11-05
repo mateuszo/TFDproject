@@ -290,6 +290,9 @@ public class UDPserver extends JFrame {
 			state.client_table.put(request.c, cli_tab); // update the VR state
 			try{
 				sendPrepareToReplicas(request); //sendPrepareToReplicas caused by the request
+				//TODO
+				//Replicas should somehow obtain the clients addres 
+				//it could be done by adding new fields to Request or Prepare message
 			}
 			catch ( IOException ioException ){
 				displayMessage( ioException.toString() + "\n" );
@@ -315,10 +318,7 @@ public class UDPserver extends JFrame {
 			
 			state.op_number++; //increment op_number
 						
-			//update log
-			state.log.add(request);
-			
-			
+						
 			//update client table
 			if(state.client_table.containsKey(request.c)){ 		//checks if client table exists for this client
 				cli_tab =  state.client_table.get(request.c);	//loads client table
