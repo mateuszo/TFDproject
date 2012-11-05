@@ -43,7 +43,7 @@ public class UDPserver extends JFrame {
 	private VRstate state;
 	 
 	 
-	 	 
+	 	 //constructor
 	 public UDPserver(int id) {
 		 
 		 super( "Replica"+id );
@@ -434,8 +434,8 @@ public class UDPserver extends JFrame {
 		for (ClientTab value : state.client_table.values()) {
 			displayMessage( "\nClient:" + value.c_id +
 			 		"\nRecen request: "+ value.recent +
-			 		"\nCommited: "+ value.commited +
-			 		"\nAddress&port: "+ value.c_add + ":" + value.c_port + "\n");
+			 		"\nCommited: "+ value.commited ); //+
+			 	//	"\nAddress&port: "+ value.c_add + ":" + value.c_port + "\n");
 		}   
 		
 	}

@@ -78,6 +78,8 @@ public class Client extends JFrame
 			socketException.printStackTrace();
 			System.exit( 1 );
 		} // end catch
+		msgSender.start();
+		this.waitForPackets(); //starts listening
 	} // end Client constructor		
 		
 	// wait for packets to arrive from Server, display packet contents
@@ -126,9 +128,7 @@ public class Client extends JFrame
 	
 	//method for sending requests - generates message, and updates the sequence number
 	private void sendRequest( String msg ){ 
-		
-		
-		
+
 		Request message = new Request(); // construction of Request object
 		message.c = c_id;
 		message.s = seq_number;
@@ -154,4 +154,26 @@ public class Client extends JFrame
 		} // end catch
 		
 	}
+	
+	
+	//auto message sender
+	Thread msgSender = new Thread(){
+		public void run(){
+			Integer arq =0;
+			while(true){
+				try{							
+					sleep(5000);
+				}
+				catch (InterruptedException e){
+					e.printStackTrace();
+				}
+				finally{
+					sendRequest("Automatic Request:" + arq);
+					arq++;
+				}
+			}
+		}
+	};
+	
+	
 } // end class Client
