@@ -1,6 +1,6 @@
 package Server;
 
-// Fig. 24.11: Client.java
+
 // Client that sends and receives packets to/from a server.
 import java.io.IOException;
 import java.io.Serializable;
@@ -24,6 +24,9 @@ public class Client extends JFrame
 	/**
 	 * 
 	 */
+	
+	//TODO
+	//Clients Timer
 	private static final long serialVersionUID = 1L;
 	private JTextField enterField; // for entering messages
 	private JTextArea displayArea; // for displaying messages

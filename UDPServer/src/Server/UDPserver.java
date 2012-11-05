@@ -241,7 +241,7 @@ public class UDPserver extends JFrame {
 		reply_msg.x = request_msg.op + "- reply";		//????????
 			
 		String message = reply_msg.toString();
-		displayMessage( "\nReply: message\n" );
+		displayMessage( "\n\nSending reply to client!\n" );
 		byte data[] = message.getBytes();
 			
 		//cli_add=state.client_table.get(req_cli).c_add;
@@ -365,7 +365,7 @@ public class UDPserver extends JFrame {
 		if (nr_ok>=2) {		//check if there are enough prepareOk's
 			try {
 				state.commit_number=prepareOk.n;				//update commit number
-				
+				displayMessage("\nEnough PrepareOK's received");
 				//req_cli=state.log.get(state.log.size()-1).c;	//get request client
 
 				
