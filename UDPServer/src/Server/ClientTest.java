@@ -14,5 +14,5 @@ public class ClientTest
 		application1.waitForPackets(); // run client application
 		
 		
-	} 	// end main
-} 		// end class ClientTest
+	} // end main
+} 	// end class ClientTest

@@ -12,8 +12,10 @@ import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Vector;
 
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
@@ -21,6 +23,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
+import Message.DoViewChange;
 import Message.Message;
 import Message.Prepare;
 import Message.PrepareOk;
@@ -29,6 +32,7 @@ import Message.Request;
 import Message.Util;
 import Server.VRstate.ClientTab;
 
+
 //************************
 //group number: tfd013
 //************************
@@ -36,14 +40,14 @@ import Server.VRstate.ClientTab;
 public class UDPserver extends JFrame {
 	 
 	private static final long serialVersionUID = 1L;
-	private JTextArea displayArea; 	// displays packets received
+	private JTextArea displayArea; // displays packets received
 	private JTextField enterField; // for entering messages
 	private DatagramSocket socket; // socket to connect to client
-	//private String config[][]={{"localhost","1024"},{"localhost","1025"},{"localhost","1026"}};
+	//config should be loaded from file
+	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};		
 	private int[] ports = {1020,1021,1022};
 	private VRstate state;
-	 
-	 
+	
 	 	 
 	 public UDPserver(int id) {
 		 
@@ -53,8 +57,9 @@ public class UDPserver extends JFrame {
 		 state = new VRstate(id);
 		 state.client_table = new HashMap<Integer,ClientTab>();
 		 state.log = new ArrayList();
-		 state.prepareOk_counter = new HashMap<Integer[][],Integer>();	//30-10-2012 - RO
-		 
+		 state.prepareOk_counter = new HashMap<Integer,Vector<Integer>>();
+		 state.doViewChange_counter = new HashMap<Integer,Vector<Integer>>();
+			
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
 			new ActionListener()
@@ -62,7 +67,7 @@ public class UDPserver extends JFrame {
 					public void actionPerformed( ActionEvent event )
 					{
 						//command
-						String command = event.getActionCommand();
+						//String command = event.getActionCommand();
 						//executeCommand(command);
 					} // end actionPerformed
 				} // end inner class
@@ -70,13 +75,14 @@ public class UDPserver extends JFrame {
 			
 		 add( enterField, BorderLayout.NORTH );
 		 
-		 displayArea = new JTextArea(); // create displayArea
+		 displayArea = new JTextArea(); 								// create displayArea
 		 add( new JScrollPane( displayArea ), BorderLayout.CENTER );
-		 setSize( 400, 300 ); // set size of window
-		 setVisible( true ); // show window
+		 setSize( 400, 300 ); 											// set size of window
+		 setVisible( true ); 											// show window
 		
 		 try {	// create DatagramSocket for sending and receiving packets
-			 socket = new DatagramSocket( ports[rep_id] );
+			 //socket = new DatagramSocket( ports[rep_id] );
+			 socket = new DatagramSocket( Integer.parseInt(config[rep_id][1]) );
 		 }	// end try
 		 catch ( SocketException socketException ) {
 			 socketException.printStackTrace();
@@ -135,6 +141,12 @@ public class UDPserver extends JFrame {
 						
 					displayMessage("\nPrepareOK received!");
 					processPrepareOk((PrepareOk) test, receivePacket);		//30-10-2012 - RO
+						
+				}
+				else if (test.getClass().getName().equals("Message.DoViewChange")){
+					
+					displayMessage("\nDoViewChange received!");
+					processDoViewChange((DoViewChange) test);		// RO
 						
 				}
 				else{
@@ -225,7 +237,6 @@ public class UDPserver extends JFrame {
 	} //end prepareOk sender
 		
 	//Send REPLY to client
-	//private void sendReplyToClient (PrepareOk prepareOk_msg, int req_cli) throws IOException {
 	private void sendReplyToClient (PrepareOk prepareOk_msg, Request request_msg) throws IOException {
 		//reply sender - 30-10-2012 - RO
 		String cli_add;
@@ -245,8 +256,6 @@ public class UDPserver extends JFrame {
 		displayMessage( "\nReply: message\n" );
 		byte data[] = message.getBytes();
 			
-		//cli_add=state.client_table.get(req_cli).c_add;
-		//cli_port=state.client_table.get(req_cli).c_port;
 		cli_add=state.client_table.get(request_msg.c).c_add;
 		cli_port=state.client_table.get(request_msg.c).c_port;
 		//displayMessage( "\nIP: " + cli_add + "Port: " + cli_port );
@@ -257,6 +266,11 @@ public class UDPserver extends JFrame {
 		socket.send( sendPacket1 );
 			
 	}// end reply sender
+	
+	//Send START VIEW to Servers
+	private void sendStartView(DoViewChange doviewchange_msg){
+		
+	}
 		
 	//********************************************************************* 
 	//							END OF SENDERS
@@ -352,43 +366,73 @@ public class UDPserver extends JFrame {
 	//PrepareOk processor
 		
 	private void processPrepareOk(PrepareOk prepOk_msg, DatagramPacket receivePacket){
-			
-		Integer nr_ok=0;
+		
+		Vector<Integer> rep_counter;
 		PrepareOk prepareOk = prepOk_msg;
-		int req_cli;
-		Integer keycount[][]={{prepareOk.n,prepareOk.i}};
-
-		if(state.prepareOk_counter.containsKey(keycount)){ 	//checks if prepareOk counter exists for this client
-			nr_ok=state.prepareOk_counter.get(keycount);
+		int nr_ok=0;
+		
+		if ((state.prepareOk_counter.isEmpty()) || (!state.prepareOk_counter.containsKey(prepareOk.n))){
+			rep_counter = new Vector<Integer>();
+			rep_counter.addElement(prepareOk.i);
+			state.prepareOk_counter.put(prepareOk.n,rep_counter);
 		}
 		else {
-			state.prepareOk_counter.put(keycount,8);
+			rep_counter=state.prepareOk_counter.get(prepareOk.n);
+			rep_counter.addElement(prepareOk.i);
+			state.prepareOk_counter.put(prepareOk.n,rep_counter);
 		}
-		displayMessage( "\n[" + prepareOk.n + "][" + prepareOk.i+"]="+ state.prepareOk_counter.get(keycount) );
-		/*	
-		if(state.prepareOk_counter.containsKey(prepareOk.n)){ 	//checks if prepareOk counter exists for this client
-			nr_ok=state.prepareOk_counter.get(prepareOk.n);
+		
+		for (int r_id=0;r_id<config.length;r_id++){			//Looks for the prepareOk msg from each replica 
+			if (!(state.prepareOk_counter.get(prepareOk.n).lastIndexOf(r_id)==-1)){
+				nr_ok++;
+			}
 		}
-		nr_ok++;					//update prepareOk counter
-		state.prepareOk_counter.put(prepareOk.n, nr_ok);
-			
-		if (nr_ok>=2) {		//check if there are enough prepareOk's
+		
+		if (nr_ok>=config.length/config.length) {							//check if there are enough prepareOk's
 			try {
-				state.commit_number=prepareOk.n;				//update commit number
-				
-				//req_cli=state.log.get(state.log.size()-1).c;	//get request client
-
-				
-				//sendReplyToClient(prepOk_msg, req_cli);			//sendReply
-				sendReplyToClient(prepOk_msg, getReply(prepareOk.n));			//sendReply
-				
-				
+				state.commit_number=prepareOk.n;							//update commit number
+				sendReplyToClient(prepareOk, getReply(prepareOk.n));		//sendReply
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 					
-		}*/
+		}
 	}	// end prepareOk processor
+	
+	//DoViewChange processor
+	
+	private void processDoViewChange(DoViewChange doviewchange_msg){
+		Vector<Integer> rep_counter;
+		DoViewChange doViewchange = doviewchange_msg;
+		int nr_ok=0;
+		
+		if ((state.doViewChange_counter.isEmpty()) || (!state.doViewChange_counter.containsKey(doViewchange.v))){
+			rep_counter = new Vector<Integer>();
+			rep_counter.addElement(doViewchange.i);
+			state.doViewChange_counter.put(doViewchange.v,rep_counter);
+		}
+		else {
+			rep_counter=state.doViewChange_counter.get(doViewchange.v);
+			rep_counter.addElement(doViewchange.i);
+			state.doViewChange_counter.put(doViewchange.v,rep_counter);
+		}
+		
+		for (int r_id=0;r_id<config.length;r_id++){			//Looks for the prepareOk msg from each replica 
+			if (!(state.doViewChange_counter.get(doViewchange.v).lastIndexOf(r_id)==-1)){
+				nr_ok++;
+			}
+		}
+		
+		if (nr_ok>=config.length/config.length) {							//check if there are enough prepareOk's
+			try {
+				state.commit_number=doviewchange_msg.n;							//update commit number
+				sendStartView(doviewchange_msg);			//send View Change
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+					
+		}
+	}
 
 	
 	//********************************************************************* 
@@ -413,30 +457,30 @@ public class UDPserver extends JFrame {
 	}
 	
 	//executes commands given to the server
-	/*private void executeCommand(String command) {
-		switch (command){
-			case "op": // display op-number
-				displayArea.append( "\n Current op-number is:" + state.op_number +"\n" ); 
-				break;
-			case "log": //displays the log
-				displayLog(); 
-				break;
-			case "client-tab":
-				displayClientTable();
-				break;
-			case "info":
-				displayMessage( "\nState:" + state.status +
-						 		"\nView number: "+ state.view_number +
-						 		"\nReplica number: "+ state.rep_number +
-						 		"\nOp number: "+ state.op_number + "\n");
-				break;
-			default:
-				displayArea.append("\nCommand not supported\n");
-				break;
-		}
-		
-		
-	}*/
+//	private void executeCommand(String command) {
+//		switch (command){
+//			case "op": // display op-number
+//				displayArea.append( "\n Current op-number is:" + state.op_number +"\n" ); 
+//				break;
+//			case "log": //displays the log
+//				displayLog(); 
+//				break;
+//			case "client-tab":
+//				displayClientTable();
+//				break;
+//			case "info":
+//				displayMessage( "\nState:" + state.status +
+//						 		"\nView number: "+ state.view_number +
+//						 		"\nReplica number: "+ state.rep_number +
+//						 		"\nOp number: "+ state.op_number + "\n");
+//				break;
+//			default:
+//				displayArea.append("\nCommand not supported\n");
+//				break;
+//		}
+//		
+//		
+//	}
 	
 	//displays client table
 	private void displayClientTable() {
@@ -471,6 +515,20 @@ public class UDPserver extends JFrame {
 		
 	}
 	
+	protected String getIpAddress(){
+	    
+		InetAddress thisIp;
+		String thisIpAddress=null;
+
+	    try{
+	    	thisIp = InetAddress.getLocalHost();
+	    	thisIpAddress = thisIp.getHostAddress().toString();
+	    }
+	    catch(Exception e){}
+		
+	    return thisIpAddress;
+	}
+	
 	//********************************************************************* 
 	//							END UTIL METHODS
 	//*********************************************************************	
@@ -481,4 +539,4 @@ public class UDPserver extends JFrame {
 
 		
 	 
-		
+	
