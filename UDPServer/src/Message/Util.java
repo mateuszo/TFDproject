@@ -3,7 +3,7 @@ package Message;
 
 public class Util {
 
-	 	// returns object
+	 // returns object
 	 public static Message fromString(String message) {
         
         String[] data = message.split(";");
@@ -24,6 +24,9 @@ public class Util {
         } else if (data[0].equals("REPLY")) {
             
             obj = new Reply();
+        } else if (data[0].equals("STARTVIEW")) {
+            
+            obj = new StartView();
         } else {
             
             obj = new Other();

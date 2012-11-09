@@ -9,6 +9,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -29,6 +30,7 @@ import Message.Prepare;
 import Message.PrepareOk;
 import Message.Reply;
 import Message.Request;
+import Message.StartView;
 import Message.Util;
 import Server.VRstate.ClientTab;
 
@@ -59,7 +61,9 @@ public class UDPserver extends JFrame {
 		 state.log = new ArrayList();
 		 state.prepareOk_counter = new HashMap<Integer,Vector<Integer>>();
 		 state.doViewChange_counter = new HashMap<Integer,Vector<Integer>>();
-			
+		
+		 state.newlog = new ArrayList();	//just for test
+		 
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
 			new ActionListener()
@@ -69,6 +73,13 @@ public class UDPserver extends JFrame {
 						//command
 						//String command = event.getActionCommand();
 						//executeCommand(command);
+						String message = event.getActionCommand();		//just for test
+						try {											//just for test
+							sendStartView(message);						//just for test
+						} catch (IOException e) {						//just for test
+							// TODO Auto-generated catch block			//just for test
+							e.printStackTrace();						//just for test
+						}
 					} // end actionPerformed
 				} // end inner class
 			); // end call to addActionListener
@@ -149,6 +160,12 @@ public class UDPserver extends JFrame {
 					processDoViewChange((DoViewChange) test);		// RO
 						
 				}
+				else if (test.getClass().getName().equals("Message.StartView")){
+					
+					displayMessage("\nStartView received!");
+					processStartView((StartView) test);		// RO
+						
+				} 
 				else{
 					displayMessage("\nInvaild message received!");  // if the message type is invalid
 				}
@@ -246,10 +263,7 @@ public class UDPserver extends JFrame {
 		Reply reply_msg = new Reply();
 			 
 		reply_msg.v = prepareOk_msg.v; 	//view number
-		//reply_msg.s = state.op_number; 	//current op_number
 		reply_msg.s = request_msg.s; 		//original seq from request
-		//reply_msg.x = state.log.listIterator(state.log.lastIndexOf());
-		//reply_msg.x ="final reply";		//????????
 		reply_msg.x = request_msg.op + "- reply";		//????????
 			
 		String message = reply_msg.toString();
@@ -268,8 +282,25 @@ public class UDPserver extends JFrame {
 	}// end reply sender
 	
 	//Send START VIEW to Servers
-	private void sendStartView(DoViewChange doviewchange_msg){
+	private void sendStartView(String doviewchange_msg) throws IOException{
+		//generate message
+		StartView startView_msg = new StartView();
 		
+		startView_msg.v=1;		//view number
+		//startView_msg.l=doviewchange_msg.l; 	//log
+		startView_msg.l=state.log; 	//log
+		startView_msg.n=1; 	//current op_number
+		startView_msg.k=2; 	//current commit_number		
+							
+		String message = startView_msg.toString();
+		displayMessage( "\nSTARTVIEW: message\n" );
+		byte data[] = message.getBytes();
+					
+		displayMessage( "\nData: " + data );
+		DatagramPacket sendPacket1 = null;
+		sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName("localhost"), ports[0] );
+			
+		socket.send( sendPacket1 ); // send packet to the second replica
 	}
 		
 	//********************************************************************* 
@@ -424,16 +455,23 @@ public class UDPserver extends JFrame {
 		}
 		
 		if (nr_ok>=config.length/config.length) {							//check if there are enough prepareOk's
-			try {
-				state.commit_number=doviewchange_msg.n;							//update commit number
-				sendStartView(doviewchange_msg);			//send View Change
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			state.view_number=doViewchange.v;							//update commit number
+			//sendStartView(doviewchange_msg);			//send View Change
 					
 		}
 	}
-
+	//StartView processor
+	
+	private void processStartView(StartView StartView_msg){
+		StartView startView = StartView_msg;
+		
+		state.view_number=startView.v;
+		state.op_number=startView.n;
+		state.commit_number=startView.k;
+		state.newlog=startView.l;
+		
+		
+	}
 	
 	//********************************************************************* 
 	//							UTIL METHODS

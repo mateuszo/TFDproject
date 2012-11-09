@@ -1,11 +1,12 @@
 package Message;
 
+import java.util.List;
 
 
 public class DoViewChange extends Message {
 
      public int v; 				// view number
-     public String l; 			// log 							ATENCION: must be fixed to correct type
+     public List<Request> l; 	// log 							ATENCION: must be fixed to correct type
      public int last_v; 		// last view with normal state
      public int n; 				// op number
      public int k; 				// commit number
@@ -32,13 +33,13 @@ public class DoViewChange extends Message {
           }
 
           // ...if second is List????
-          try {
-             l = data[2];
-
-          } catch (NumberFormatException e) {
-
-             return 1;
-          }
+//          try {
+//             l = data[2];
+//
+//          } catch (NumberFormatException e) {
+//
+//             return 1;
+//          }
 
        // ...if third is int
           try {

@@ -1,10 +1,13 @@
 package Message;
 
+import java.util.Arrays;
+import java.util.List;
+
 
 public class StartView extends Message {
 
      public int v; 				// view number
-     public String l; 			// log 							ATENCION: must be fixed to correct type
+     public List<Request> l; 			// log 							ATENCION: must be fixed to correct type
      public int n; 				// op number
      public int k; 				// commit number
      
@@ -13,12 +16,13 @@ public class StartView extends Message {
      // returns 1 on error, 0 on success
      public int fromString(String[] data) {
 
+    	 String[] data_copy= new String[data.length-3];
 
           // check if there are enough elements to decode...
-          if (data.length != 5) {
+          //if (data.length != 5) {
 
-                return 1;
-          }
+            //    return 1;
+          //}
 
           // ...if first is int
           try {
@@ -30,13 +34,24 @@ public class StartView extends Message {
           }
 
           // ...if second is List????
-          try {
-             l = data[2];
+          
+          //r = new Request();
+		  
+		  //String[] forRequest = {data[4], data[5], data[6], data[7]};
 
-          } catch (NumberFormatException e) {
+            //r.fromString(forRequest);
+          
+          //try {
+             for (int idx=2;idx<data.length;idx++){
+            	 data_copy[idx-2]=data[idx];
+             }
+             
+             //l = Arrays.asList((List<Request>) data_copy);
 
-             return 1;
-          }
+          //} catch (NumberFormatException e) {
+
+            // return 1;
+          //}
 
        // ...if third is int
           try {

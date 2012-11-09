@@ -18,7 +18,7 @@ public class VRstate {
 	public List<Request> log; 								//log of requests
 	public Map<Integer,Vector<Integer>> prepareOk_counter;	//prepareOK counter
 	public Map<Integer,Vector<Integer>> doViewChange_counter;	//doviewchange counter
-
+	public List<Request> newlog;		//just for test
 	
 	public VRstate(int id) { //add here the config, view_number etc.
 		//config = ?
