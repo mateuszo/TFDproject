@@ -43,7 +43,7 @@ public class UDPserver extends JFrame {
 	private VRstate state;
 	 
 	 
-	 	 
+	 	 //constructor
 	 public UDPserver(int id) {
 		 
 		 super( "Replica"+id );
@@ -97,7 +97,7 @@ public class UDPserver extends JFrame {
 			 try {	// receive packet, display contents, return copy to client
 				 byte data[] = new byte[ 100 ]; // set up packet
 					
-				 displayMessage("\n\n--------------------------------------------------\nwaiting for packet");
+				 displayMessage("\n--------------------------------------------------\nwaiting for the packet\n");
 				 
 				 DatagramPacket receivePacket = new DatagramPacket( data, data.length );
 				 
@@ -108,36 +108,36 @@ public class UDPserver extends JFrame {
 					
 				 Message test = Util.fromString(received_msg); // creating object from message
 					
-				 displayMessage( "\nPacket received:" + 
+				 displayMessage( "\n\tPacket received:" + 
 						 "\nFrom host: "+ receivePacket.getAddress() +
 						 "\nHost port: "+ receivePacket.getPort() +
-						 "\nLength: "+ receivePacket.getLength() +
-						 "\nContaining:\n\t" + received_msg +
-						 "\nType:\n\t"+ test.getClass().getName());
+						// "\nLength: "+ receivePacket.getLength() +
+						 "\nContaining: " + received_msg +
+						 "\nType: "+ test.getClass().getName() );
 					
 				 //ACTION RECOGNITION
 				 //checks the type of the received messages and runs appropriate Action
 				 if(test.getClass().getName().equals("Message.Request")){
 					 
-					 displayMessage("\nRequest received!");
+					 displayMessage("\n\tRequest received!");
 					 processRequest((Request) test, receivePacket.getAddress(), receivePacket.getPort());
 						
 					//sendPrepareToReplicas( receivePacket );
 				}
 				else if (test.getClass().getName().equals("Message.Prepare")){
 						
-					displayMessage("\nPrepare received!");
+					displayMessage("\n\tPrepare received!");
 					processPrepare((Prepare) test);
 						
 				}
 				else if (test.getClass().getName().equals("Message.PrepareOk")){
 						
-					displayMessage("\nPrepareOK received!");
+					displayMessage("\n\tPrepareOK received!");
 					processPrepareOk((PrepareOk) test, receivePacket);		//30-10-2012 - RO
 						
 				}
 				else{
-					displayMessage("\nInvaild message received!");  // if the message type is invalid
+					displayMessage("\n\tInvaild message received!");  // if the message type is invalid
 				}
 			} // end try
 			catch ( IOException ioException ){
@@ -170,7 +170,7 @@ public class UDPserver extends JFrame {
 	//Send PREPARE to replicas
 	private void sendPrepareToReplicas (Request received_req) throws IOException {
 			
-		displayMessage("\n\nSending Prepare: request to all replicas.");
+		displayMessage("\n\nSending Prepare to all replicas.");
 		//for loop should be here
 		//create prepare message
 		Prepare prepare_msg = new Prepare();
@@ -181,7 +181,7 @@ public class UDPserver extends JFrame {
 			
 		//generate message
 		String message = prepare_msg.toString();
-		displayMessage( "\nPrepare: message\n" );
+		displayMessage( "\nPrepare:"+ message );
 		byte data[] = message.getBytes();
 			
 		DatagramPacket sendPacket1 = new DatagramPacket( 
@@ -196,14 +196,14 @@ public class UDPserver extends JFrame {
 			
 		socket.send( sendPacket2 ); // send packet to the second replica
 			
-		displayMessage( "Prepare sent\n" );
+		displayMessage( "\nPrepare sent\n" );
 	
 	} //end prepare sender
 		
 	//Send PREPAREOK to primary
 	private void sendPrepareOkToPrimary (Prepare prep_msg) throws IOException {
 		
-		displayMessage("\n\nSending PrepareOK  to primary.\n");
+		displayMessage("\nSending PrepareOK  to primary.");
 					
 		//generate message
 		PrepareOk prepareOk_msg = new PrepareOk();
@@ -219,7 +219,7 @@ public class UDPserver extends JFrame {
 			
 		socket.send( sendPacket1 ); // send packet to the primary
 
-		displayMessage( "\nPrepareOK sent\n" );
+		displayMessage( "\nPrepareOK sent" );
 	
 	} //end prepareOk sender
 		
@@ -241,7 +241,7 @@ public class UDPserver extends JFrame {
 		reply_msg.x = request_msg.op + "- reply";		//????????
 			
 		String message = reply_msg.toString();
-		displayMessage( "\nReply: message\n" );
+		displayMessage( "\nSending reply to client!" );
 		byte data[] = message.getBytes();
 			
 		//cli_add=state.client_table.get(req_cli).c_add;
@@ -254,6 +254,7 @@ public class UDPserver extends JFrame {
 		sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName(cli_add), cli_port );
 			
 		socket.send( sendPacket1 );
+		displayMessage( "\nReply sent" );
 			
 	}// end reply sender
 		
@@ -290,6 +291,9 @@ public class UDPserver extends JFrame {
 			state.client_table.put(request.c, cli_tab); // update the VR state
 			try{
 				sendPrepareToReplicas(request); //sendPrepareToReplicas caused by the request
+				//TODO
+				//Replicas should somehow obtain the clients addres 
+				//it could be done by adding new fields to Request or Prepare message
 			}
 			catch ( IOException ioException ){
 				displayMessage( ioException.toString() + "\n" );
@@ -315,10 +319,7 @@ public class UDPserver extends JFrame {
 			
 			state.op_number++; //increment op_number
 						
-			//update log
-			state.log.add(request);
-			
-			
+						
 			//update client table
 			if(state.client_table.containsKey(request.c)){ 		//checks if client table exists for this client
 				cli_tab =  state.client_table.get(request.c);	//loads client table
@@ -365,7 +366,8 @@ public class UDPserver extends JFrame {
 		if (nr_ok>=2) {		//check if there are enough prepareOk's
 			try {
 				state.commit_number=prepareOk.n;				//update commit number
-				
+				displayMessage("\nEnough PrepareOK's received!");
+				// here should be delivery/commit
 				//req_cli=state.log.get(state.log.size()-1).c;	//get request client
 
 				
@@ -406,7 +408,7 @@ public class UDPserver extends JFrame {
 	private void executeCommand(String command) {
 		switch (command){
 			case "op": // display op-number
-				displayArea.append( "\n Current op-number is:" + state.op_number +"\n" ); 
+				displayArea.append( "\nCurrent op-number is:" + state.op_number +"\n" ); 
 				break;
 			case "log": //displays the log
 				displayLog(); 
@@ -415,7 +417,8 @@ public class UDPserver extends JFrame {
 				displayClientTable();
 				break;
 			case "info":
-				displayMessage( "\nState:" + state.status +
+				displayMessage( "\n\tInfo:" +
+								"\nState:" + state.status +
 						 		"\nView number: "+ state.view_number +
 						 		"\nReplica number: "+ state.rep_number +
 						 		"\nOp number: "+ state.op_number + "\n");
@@ -430,12 +433,12 @@ public class UDPserver extends JFrame {
 	
 	//displays client table
 	private void displayClientTable() {
-		displayArea.append("\nCurrent client table:\n");
+		displayArea.append("\n\tCurrent client table:");
 		for (ClientTab value : state.client_table.values()) {
 			displayMessage( "\nClient:" + value.c_id +
 			 		"\nRecen request: "+ value.recent +
-			 		"\nCommited: "+ value.commited +
-			 		"\nAddress&port: "+ value.c_add + ":" + value.c_port + "\n");
+			 		"\nCommited: "+ value.commited + "\n"); //+
+			 	//	"\nAddress&port: "+ value.c_add + ":" + value.c_port + "\n");
 		}   
 		
 	}
@@ -443,7 +446,7 @@ public class UDPserver extends JFrame {
 	//method that displays current log
 	private void displayLog() {
 		
-		displayArea.append( "\n Current log:\n" );
+		displayArea.append( "\n\tCurrent log:" );
 		
 		Iterator it = state.log.iterator(); //initialize iterator for log list
 		int i=0; //
