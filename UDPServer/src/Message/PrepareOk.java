@@ -3,9 +3,9 @@ package Message;
 
 public class PrepareOk extends Message {
 
-     public int v; // view number
-     public int n; // op number
-     public int i; // replica id
+     public int v; 	// view number
+     public int n; 	// op number
+     public int i; 		// replica id
 
 
      // returns 1 on error, 0 on success

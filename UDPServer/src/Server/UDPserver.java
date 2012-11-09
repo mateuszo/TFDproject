@@ -29,13 +29,14 @@ import Message.Request;
 import Message.Util;
 import Server.VRstate.ClientTab;
 
-
+//************************
 //group number: tfd013
+//************************
 
 public class UDPserver extends JFrame {
 	 
 	private static final long serialVersionUID = 1L;
-	private JTextArea displayArea; // displays packets received
+	private JTextArea displayArea; 	// displays packets received
 	private JTextField enterField; // for entering messages
 	private DatagramSocket socket; // socket to connect to client
 	//private String config[][]={{"localhost","1024"},{"localhost","1025"},{"localhost","1026"}};
@@ -52,7 +53,7 @@ public class UDPserver extends JFrame {
 		 state = new VRstate(id);
 		 state.client_table = new HashMap<Integer,ClientTab>();
 		 state.log = new ArrayList();
-		 state.prepareOk_counter = new HashMap<Integer,Integer>();	//30-10-2012 - RO
+		 state.prepareOk_counter = new HashMap<Integer[][],Integer>();	//30-10-2012 - RO
 		 
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
@@ -62,7 +63,7 @@ public class UDPserver extends JFrame {
 					{
 						//command
 						String command = event.getActionCommand();
-						executeCommand(command);
+						//executeCommand(command);
 					} // end actionPerformed
 				} // end inner class
 			); // end call to addActionListener
@@ -355,7 +356,16 @@ public class UDPserver extends JFrame {
 		Integer nr_ok=0;
 		PrepareOk prepareOk = prepOk_msg;
 		int req_cli;
-			
+		Integer keycount[][]={{prepareOk.n,prepareOk.i}};
+
+		if(state.prepareOk_counter.containsKey(keycount)){ 	//checks if prepareOk counter exists for this client
+			nr_ok=state.prepareOk_counter.get(keycount);
+		}
+		else {
+			state.prepareOk_counter.put(keycount,8);
+		}
+		displayMessage( "\n[" + prepareOk.n + "][" + prepareOk.i+"]="+ state.prepareOk_counter.get(keycount) );
+		/*	
 		if(state.prepareOk_counter.containsKey(prepareOk.n)){ 	//checks if prepareOk counter exists for this client
 			nr_ok=state.prepareOk_counter.get(prepareOk.n);
 		}
@@ -377,7 +387,7 @@ public class UDPserver extends JFrame {
 				e.printStackTrace();
 			}
 					
-		}
+		}*/
 	}	// end prepareOk processor
 
 	
@@ -403,7 +413,7 @@ public class UDPserver extends JFrame {
 	}
 	
 	//executes commands given to the server
-	private void executeCommand(String command) {
+	/*private void executeCommand(String command) {
 		switch (command){
 			case "op": // display op-number
 				displayArea.append( "\n Current op-number is:" + state.op_number +"\n" ); 
@@ -426,7 +436,7 @@ public class UDPserver extends JFrame {
 		}
 		
 		
-	}
+	}*/
 	
 	//displays client table
 	private void displayClientTable() {

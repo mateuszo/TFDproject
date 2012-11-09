@@ -15,7 +15,9 @@ public class VRstate {
 	public int commit_number; // op_number of last committed request
 	public Map<Integer,ClientTab> client_table; //list of client table objects keys are clients ids
 	public List<Request> log; //log of requests
-	public Map<Integer,Integer> prepareOk_counter; // <op_number of the request, okcount>
+	//public Map<Integer,Integer> prepareOk_counter; 	// <op_number of the request, okcount>
+	public Map<Integer[][],Integer> prepareOk_counter; // <op_number of the request, okcount>
+	
 	
 	public VRstate(int id) { //add here the config, view_number etc.
 		//config = ?
