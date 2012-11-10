@@ -21,6 +21,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
+import Message.Heartbeat;
 import Message.Message;
 import Message.Prepare;
 import Message.PrepareOk;
@@ -41,7 +42,11 @@ public class UDPserver extends JFrame {
 	//private String config[][]={{"localhost","1024"},{"localhost","1025"},{"localhost","1026"}};
 	private int[] ports = {1020,1021,1022};
 	private VRstate state;
-	 
+	
+	//Variables for the timers
+	private long timeout; // set the timeout value
+	private long lastSend; //time when last send occured
+	private long lastReceive; // time when last receive occured
 	 
 	 	 //constructor
 	 public UDPserver(int id) {
@@ -53,6 +58,11 @@ public class UDPserver extends JFrame {
 		 state.client_table = new HashMap<Integer,ClientTab>();
 		 state.log = new ArrayList();
 		 state.prepareOk_counter = new HashMap<Integer,Integer>();	//30-10-2012 - RO
+		 
+		 //timer values initialization
+		 timeout = 5000; // choose timeout value: T+delta [miliseconds]
+		 lastSend = System.currentTimeMillis(); //initializing
+		 lastSend = System.currentTimeMillis(); 
 		 
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
@@ -81,6 +91,14 @@ public class UDPserver extends JFrame {
 			 socketException.printStackTrace();
 			 System.exit( 1 );
 		 } // end catch
+		 
+		 
+		 if(id==0){ //starts heartbeat timer for primary only
+			 heartbeatTimer.start(); // starts heartbeat timer
+		 }
+		 else{
+			 //start timeout timer/failure detector on replicas
+		 }
 		 
 		 this.waitForPackets(); //starts listening
 	 }
@@ -114,8 +132,10 @@ public class UDPserver extends JFrame {
 						// "\nLength: "+ receivePacket.getLength() +
 						 "\nContaining: " + received_msg +
 						 "\nType: "+ test.getClass().getName() );
-					
-				 //ACTION RECOGNITION
+				 
+		//*******************************		 
+		//		ACTION RECOGNITION
+		//*******************************
 				 //checks the type of the received messages and runs appropriate Action
 				 if(test.getClass().getName().equals("Message.Request")){
 					 
@@ -135,6 +155,10 @@ public class UDPserver extends JFrame {
 					displayMessage("\n\tPrepareOK received!");
 					processPrepareOk((PrepareOk) test, receivePacket);		//30-10-2012 - RO
 						
+				}
+				else if (test.getClass().getName().equals("Message.Heartbeat")){ // problem here - doesnt detect the type
+					Heartbeat heart = (Heartbeat)test;
+					displayMessage("\nHeartbeat received: " + heart.sendTime);
 				}
 				else{
 					displayMessage("\n\tInvaild message received!");  // if the message type is invalid
@@ -196,6 +220,8 @@ public class UDPserver extends JFrame {
 			
 		socket.send( sendPacket2 ); // send packet to the second replica
 			
+		lastSend = System.currentTimeMillis(); // updates last Send time
+		
 		displayMessage( "\nPrepare sent\n" );
 	
 	} //end prepare sender
@@ -257,6 +283,33 @@ public class UDPserver extends JFrame {
 		displayMessage( "\nReply sent" );
 			
 	}// end reply sender
+	
+	
+	//heartbeat sender
+	private void sendHeartbeat() throws IOException{
+		Heartbeat heart = new Heartbeat();
+		heart.sendTime = System.currentTimeMillis();
+		String message = heart.toString();
+		
+		byte data[] = message.getBytes();
+		displayMessage( "\nSending Heartbeat: " + message);
+		
+		DatagramPacket sendPacket1 = new DatagramPacket( 
+				data, data.length,
+				InetAddress.getByName("localhost"), ports[1] ); //should be taken from config
+			
+		socket.send( sendPacket1 ); // send packet to the first replica
+		
+		DatagramPacket sendPacket2 = new DatagramPacket(  
+				data, data.length,
+				InetAddress.getByName("localhost"), ports[2] ); //should be taken from config
+			
+		socket.send( sendPacket2 ); // send packet to the second replica
+		
+		displayMessage( "\nHeartbeat sent!" );
+		
+		
+	}
 		
 	//********************************************************************* 
 	//							END OF SENDERS
@@ -468,6 +521,51 @@ public class UDPserver extends JFrame {
 	//							END UTIL METHODS
 	//*********************************************************************	
 		
+	
+	
+	
+	//*********************************************************************
+	//							TIMERS - FAILURE DETECTORS
+	//*********************************************************************
+	
+	Thread heartbeatTimer = new Thread(){
+		public void run(){
+			long sleepTime = timeout; //time to sleep
+			long sendInterval;
+			while(true){
+				try{
+					displayMessage("\nheartbeat timer goes to sleep for: " + sleepTime + " miliseconds");
+					sleep(sleepTime); //sleeps for the given time 
+					sendInterval = System.currentTimeMillis() - lastSend; //calculates the time period between now and last send 
+					displayMessage("\ncurrent time: " + System.currentTimeMillis() + " send interval: " + sendInterval );
+					if(sendInterval >= timeout){ //checks if the time was exceeded
+						displayMessage("\nTimeout! -- sending Heartbeat");
+						sleepTime = timeout;
+						try{
+							sendHeartbeat(); //sendHeartbeat to replicas						
+						}
+						catch ( IOException ioException ){
+							displayMessage( ioException.toString() + "\n" );
+							ioException.printStackTrace();
+						}
+						
+					}
+					else{
+						displayMessage("\nno timeout");
+						sleepTime = timeout - sendInterval;
+					}
+				}
+				catch (InterruptedException e){
+					e.printStackTrace();
+				}
+
+			}
+		}
+	};
+	
+	
+	
+	
 }
 
 		
