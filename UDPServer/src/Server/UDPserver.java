@@ -9,13 +9,9 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Vector;
 
 import javax.swing.JFrame;
@@ -45,8 +41,9 @@ public class UDPserver extends JFrame {
 	private JTextArea displayArea; // displays packets received
 	private JTextField enterField; // for entering messages
 	private DatagramSocket socket; // socket to connect to client
-	//config should be loaded from file
-	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};		
+	//config,min_quorum should be loaded from file
+	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};
+	private int min_quorum=2;	//minimum quorum f+1=2
 	private int[] ports = {1020,1021,1022};
 	private VRstate state;
 	
@@ -58,28 +55,26 @@ public class UDPserver extends JFrame {
 		 int rep_id=id; //id of the replica  id=0 indicates the primary
 		 state = new VRstate(id);
 		 state.client_table = new HashMap<Integer,ClientTab>();
-		 state.log = new ArrayList();
+		 state.log = new ArrayList<Request>();
 		 state.prepareOk_counter = new HashMap<Integer,Vector<Integer>>();
 		 state.doViewChange_counter = new HashMap<Integer,Vector<Integer>>();
 		
-		 state.newlog = new ArrayList();	//just for test
-		 
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
 			new ActionListener()
 				{
 					public void actionPerformed( ActionEvent event )
 					{
-						//command
+						//command;
 						//String command = event.getActionCommand();
 						//executeCommand(command);
-						String message = event.getActionCommand();		//just for test
-						try {											//just for test
-							sendStartView(message);						//just for test
-						} catch (IOException e) {						//just for test
-							// TODO Auto-generated catch block			//just for test
-							e.printStackTrace();						//just for test
-						}
+//						String message = event.getActionCommand();		//just for test
+//						try {											//just for test
+//							sendStartView(message);						//just for test
+//						} catch (IOException e) {						//just for test
+//							// TODO Auto-generated catch block			//just for test
+//							e.printStackTrace();						//just for test
+//						}
 					} // end actionPerformed
 				} // end inner class
 			); // end call to addActionListener
@@ -282,25 +277,31 @@ public class UDPserver extends JFrame {
 	}// end reply sender
 	
 	//Send START VIEW to Servers
-	private void sendStartView(String doviewchange_msg) throws IOException{
+	private void sendStartView(DoViewChange doviewchange_msg) throws IOException{
+	//private void sendStartView(String doviewchange_msg) throws IOException{
 		//generate message
 		StartView startView_msg = new StartView();
 		
-		startView_msg.v=1;		//view number
+		startView_msg.v=1;						//view number
 		//startView_msg.l=doviewchange_msg.l; 	//log
-		startView_msg.l=state.log; 	//log
-		startView_msg.n=1; 	//current op_number
-		startView_msg.k=2; 	//current commit_number		
+		startView_msg.l=state.log; 			//log
+		startView_msg.n=1; 						//current op_number
+		startView_msg.k=2; 						//current commit_number		
 							
 		String message = startView_msg.toString();
 		displayMessage( "\nSTARTVIEW: message\n" );
 		byte data[] = message.getBytes();
 					
 		displayMessage( "\nData: " + data );
-		DatagramPacket sendPacket1 = null;
-		sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName("localhost"), ports[0] );
+		
+		for (int r_id=0;r_id<config.length;r_id++){	
+			DatagramPacket sendPacket1 = null;
+			sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName("localhost"), Integer.parseInt(config[r_id][1]) );
 			
-		socket.send( sendPacket1 ); // send packet to the second replica
+			socket.send( sendPacket1 ); // send packet to the second replica
+		
+			displayMessage( "\nStartView sent to Server " + r_id );
+		}
 	}
 		
 	//********************************************************************* 
@@ -419,7 +420,10 @@ public class UDPserver extends JFrame {
 			}
 		}
 		
-		if (nr_ok>=config.length/config.length) {							//check if there are enough prepareOk's
+		//check if there are enough prepareOk's
+		//if we just need one, send immediately and ignore the second
+		displayMessage( "\nr_ok="+nr_ok+" commit="+ state.commit_number+" n="+prepareOk.n);
+		if ((nr_ok+1>=min_quorum) && (state.commit_number<prepareOk.n)) {	
 			try {
 				state.commit_number=prepareOk.n;							//update commit number
 				sendReplyToClient(prepareOk, getReply(prepareOk.n));		//sendReply
@@ -448,18 +452,23 @@ public class UDPserver extends JFrame {
 			state.doViewChange_counter.put(doViewchange.v,rep_counter);
 		}
 		
-		for (int r_id=0;r_id<config.length;r_id++){			//Looks for the prepareOk msg from each replica 
+		for (int r_id=0;r_id<config.length;r_id++){			//Looks for the doViewChange msg from each server 
 			if (!(state.doViewChange_counter.get(doViewchange.v).lastIndexOf(r_id)==-1)){
 				nr_ok++;
 			}
 		}
 		
-		if (nr_ok>=config.length/config.length) {							//check if there are enough prepareOk's
-			state.view_number=doViewchange.v;							//update commit number
-			//sendStartView(doviewchange_msg);			//send View Change
+		if (nr_ok>=min_quorum) {					//check if there are enough doViewChange msg
+			state.view_number=doViewchange.v;		//update view number
+			try {
+				sendStartView(doViewchange);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}		//send ViewChange msg
 					
 		}
-	}
+	}	// end ViewChange processo
+	
 	//StartView processor
 	
 	private void processStartView(StartView StartView_msg){
@@ -468,7 +477,8 @@ public class UDPserver extends JFrame {
 		state.view_number=startView.v;
 		state.op_number=startView.n;
 		state.commit_number=startView.k;
-		state.newlog=startView.l;
+		state.log.clear();
+		state.log=startView.l;
 		
 		
 	}
