@@ -156,7 +156,7 @@ public class UDPserver extends JFrame {
 					processPrepareOk((PrepareOk) test, receivePacket);		//30-10-2012 - RO
 						
 				}
-				else if (test.getClass().getName().equals("Message.Heartbeat")){ // problem here - doesnt detect the type
+				else if (test.getClass().getName().equals("Message.Heartbeat")){ // problem here - doesn't detect the type
 					Heartbeat heart = (Heartbeat)test;
 					displayMessage("\nHeartbeat received: " + heart.sendTime);
 				}
