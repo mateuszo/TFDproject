@@ -47,7 +47,8 @@ public class UDPserver extends JFrame {
 	private long timeout; // set the timeout value
 	private long lastSend; //time when last send occured
 	private long lastReceive; // time when last receive occured
-	 
+	private long transmissionDelay; //Transmission delay time
+	
 	 	 //constructor
 	 public UDPserver(int id) {
 		 
@@ -60,10 +61,12 @@ public class UDPserver extends JFrame {
 		 state.prepareOk_counter = new HashMap<Integer,Integer>();	//30-10-2012 - RO
 		 
 		 //timer values initialization
-		 timeout = 5000; // choose timeout value: T+delta [miliseconds]
+		 timeout = 5000; // choose timeout value: T [milliseconds]
+		 transmissionDelay = 100; //choose delta [milliseconds]
 		 lastSend = System.currentTimeMillis(); //initializing
-		 lastSend = System.currentTimeMillis(); 
-		 
+		 lastSend = System.currentTimeMillis();
+		  
+		 this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  //close operation - added to kill the threads after closing main window
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
 			new ActionListener()
@@ -97,7 +100,7 @@ public class UDPserver extends JFrame {
 			 heartbeatTimer.start(); // starts heartbeat timer
 		 }
 		 else{
-			 //start timeout timer/failure detector on replicas
+			 watchTimer.start(); //start watch dog/failure detector on replicas
 		 }
 		 
 		 this.waitForPackets(); //starts listening
@@ -125,7 +128,9 @@ public class UDPserver extends JFrame {
 				 String received_msg = new String( receivePacket.getData(), 0, receivePacket.getLength() );
 					
 				 Message test = Util.fromString(received_msg); // creating object from message
-					
+				
+				 lastReceive = System.currentTimeMillis(); //update lats receive timestamp
+				 
 				 displayMessage( "\n\tPacket received:" + 
 						 "\nFrom host: "+ receivePacket.getAddress() +
 						 "\nHost port: "+ receivePacket.getPort() +
@@ -528,6 +533,8 @@ public class UDPserver extends JFrame {
 	//							TIMERS - FAILURE DETECTORS
 	//*********************************************************************
 	
+	
+	//heartbeat timer on primary. Sends heartbeat to replicas if no message has been sent within timeout
 	Thread heartbeatTimer = new Thread(){
 		public void run(){
 			long sleepTime = timeout; //time to sleep
@@ -561,8 +568,38 @@ public class UDPserver extends JFrame {
 
 			}
 		}
-	};
+	}; // end heartbeat timer thread
+
 	
+	//watch dog timer on replicas. Checks every (Td + delta) if the message from primary was received. If not starts a view change.
+	Thread watchTimer = new Thread(){
+		public void run(){
+			long timeoutPlusDelay = timeout + transmissionDelay;
+			long sleepTime = timeoutPlusDelay; //time to sleep
+			long receiveInterval;
+			while(true){
+				try{
+					displayMessage("\nWatchDog timer goes to sleep for: " + sleepTime + " miliseconds");
+					sleep(sleepTime); //sleeps for the given time 
+					receiveInterval = System.currentTimeMillis() - lastReceive; //calculates the time period between now and last receive 
+					displayMessage("\ncurrent time: " + System.currentTimeMillis() + " receive interval: " + receiveInterval );
+					if(receiveInterval >= timeoutPlusDelay){ //checks if the time was exceeded
+						displayMessage("\nTimeout! Primary is dead!");
+						sleepTime = timeoutPlusDelay; //TODO start view change instead
+					}
+					else{
+						displayMessage("\nPrimary is alive!");
+						sleepTime = timeoutPlusDelay - receiveInterval;
+					}
+					
+				}
+				catch (InterruptedException e){
+					e.printStackTrace();
+				}
+
+			}
+		}
+	}; //end watch dog timer thread
 	
 	
 	

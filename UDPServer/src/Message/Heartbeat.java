@@ -12,7 +12,7 @@ public int fromString(String[] data) {
         
         // ...if first is int
         try {
-          sendTime = Integer.parseInt(data[1]);
+          sendTime = Long.parseLong(data[1]);
           
         } catch (NumberFormatException e) {
           
