@@ -23,6 +23,9 @@ public class Util {
         } else if (data[0].equals("REPLY")) {
             
             obj = new Reply();
+        } else if (data[0].equals("HEARTBEAT")){
+        	
+        	obj = new Heartbeat();        	
         } else {
             
             obj = new Other();
