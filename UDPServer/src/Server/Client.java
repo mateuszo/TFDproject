@@ -78,7 +78,7 @@ public class Client extends JFrame
 			socketException.printStackTrace();
 			System.exit( 1 );
 		} // end catch
-		msgSender.start();
+		//msgSender.start();  //starts automatic message sender
 		this.waitForPackets(); //starts listening
 	} // end Client constructor		
 		
