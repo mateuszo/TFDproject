@@ -93,7 +93,6 @@ public class UDPserver extends JFrame {
 						try {											//just for test
 							sendStartView(message);						//just for test
 						} catch (IOException e) {						//just for test
-							// TODO Auto-generated catch block			//just for test
 							e.printStackTrace();						//just for test
 						}
 					} // end actionPerformed
@@ -656,12 +655,13 @@ public class UDPserver extends JFrame {
 			long sendInterval;
 			while(true){
 				try{
-					displayMessage("\nheartbeat timer goes to sleep for: " + sleepTime + " miliseconds");
+					// all displays are commented. Uncomment to see more information about timer's action.
+					// displayMessage("\nheartbeat timer goes to sleep for: " + sleepTime + " miliseconds");
 					sleep(sleepTime); //sleeps for the given time 
 					sendInterval = System.currentTimeMillis() - lastSend; //calculates the time period between now and last send 
-					displayMessage("\ncurrent time: " + System.currentTimeMillis() + " send interval: " + sendInterval );
+					// displayMessage("\ncurrent time: " + System.currentTimeMillis() + " send interval: " + sendInterval );
 					if(sendInterval >= timeout){ //checks if the time was exceeded
-						displayMessage("\nTimeout! -- sending Heartbeat");
+						// displayMessage("\nTimeout! -- sending Heartbeat");
 						sleepTime = timeout;
 						try{
 							sendHeartbeat(); //sendHeartbeat to replicas						
@@ -673,7 +673,7 @@ public class UDPserver extends JFrame {
 						
 					}
 					else{
-						displayMessage("\nno timeout");
+						// displayMessage("\nno timeout");
 						sleepTime = timeout - sendInterval;
 					}
 				}
@@ -694,10 +694,10 @@ public class UDPserver extends JFrame {
 			long receiveInterval;
 			while(true){
 				try{
-					displayMessage("\nWatchDog timer goes to sleep for: " + sleepTime + " miliseconds");
+					// displayMessage("\nWatchDog timer goes to sleep for: " + sleepTime + " miliseconds");
 					sleep(sleepTime); //sleeps for the given time 
 					receiveInterval = System.currentTimeMillis() - lastReceive; //calculates the time period between now and last receive 
-					displayMessage("\ncurrent time: " + System.currentTimeMillis() + " receive interval: " + receiveInterval );
+					// displayMessage("\ncurrent time: " + System.currentTimeMillis() + " receive interval: " + receiveInterval );
 					if(receiveInterval >= timeoutPlusDelay){ //checks if the time was exceeded
 						displayMessage("\nTimeout! Primary is dead!");
 						sleepTime = timeoutPlusDelay; //TODO start view change instead
