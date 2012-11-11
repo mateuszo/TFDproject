@@ -578,7 +578,9 @@ public class UDPserver extends JFrame {
 								"\nState:" + state.status +
 						 		"\nView number: "+ state.view_number +
 						 		"\nReplica number: "+ state.rep_number +
-						 		"\nOp number: "+ state.op_number + "\n");
+						 		"\nOp number: "+ state.op_number + 
+						 		"\nLast receive:" + lastReceive +
+						 		"\nLast send:" + lastSend +"\n");
 				break;
 			default:
 				displayArea.append("\nCommand not supported\n");
