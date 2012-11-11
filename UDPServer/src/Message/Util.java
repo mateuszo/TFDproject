@@ -27,6 +27,9 @@ public class Util {
         } else if (data[0].equals("STARTVIEW")) {
             
             obj = new StartView();
+        } else if (data[0].equals("HEARTBEAT")){
+        	
+        	obj = new Heartbeat(); 
         } else {
             
             obj = new Other();

@@ -25,6 +25,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
 import Message.DoViewChange;
+import Message.Heartbeat;
 import Message.Message;
 import Message.Prepare;
 import Message.PrepareOk;
@@ -50,7 +51,14 @@ public class UDPserver extends JFrame {
 	private int[] ports = {1020,1021,1022};
 	private VRstate state;
 	
+	//Variables for the timers
+	private long timeout; // set the timeout value
+	private long lastSend; //time when last send occurred
+	private long lastReceive; // time when last receive occurred
+	private long transmissionDelay; //Transmission delay time
+	
 	 	 
+	//constructor
 	 public UDPserver(int id) {
 		 
 		 super( "Replica"+id );
@@ -64,6 +72,13 @@ public class UDPserver extends JFrame {
 		
 		 state.newlog = new ArrayList();	//just for test
 		 
+
+		 //timer values initialization
+		 timeout = 5000; // choose timeout value: T [milliseconds]
+		 transmissionDelay = 100; //choose delta [milliseconds]
+		 lastSend = System.currentTimeMillis(); //initializing
+		 lastSend = System.currentTimeMillis();
+
 		 this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  //close operation - added to kill the threads after closing main window
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
@@ -72,8 +87,8 @@ public class UDPserver extends JFrame {
 					public void actionPerformed( ActionEvent event )
 					{
 						//command
-						//String command = event.getActionCommand();
-						//executeCommand(command);
+						String command = event.getActionCommand();
+						executeCommand(command);
 						String message = event.getActionCommand();		//just for test
 						try {											//just for test
 							sendStartView(message);						//just for test
@@ -101,6 +116,14 @@ public class UDPserver extends JFrame {
 			 System.exit( 1 );
 		 } // end catch
 		 
+		 
+		 if(id==0){ //starts heartbeat timer for primary only
+			 heartbeatTimer.start(); // starts heartbeat timer
+		 }
+		 else{
+			 watchTimer.start(); //start watch dog/failure detector on replicas
+		 }
+		 
 		 this.waitForPackets(); //starts listening
 	 }
 
@@ -116,7 +139,7 @@ public class UDPserver extends JFrame {
 			 try {	// receive packet, display contents, return copy to client
 				 byte data[] = new byte[ 100 ]; // set up packet
 					
-				 displayMessage("\n\n--------------------------------------------------\nwaiting for packet");
+				 displayMessage("\n--------------------------------------------------\nwaiting for the packet\n");
 				 
 				 DatagramPacket receivePacket = new DatagramPacket( data, data.length );
 				 
@@ -126,32 +149,36 @@ public class UDPserver extends JFrame {
 				 String received_msg = new String( receivePacket.getData(), 0, receivePacket.getLength() );
 					
 				 Message test = Util.fromString(received_msg); // creating object from message
-					
-				 displayMessage( "\nPacket received:" + 
+				
+				 lastReceive = System.currentTimeMillis(); //update lats receive timestamp
+				 
+				 displayMessage( "\n\tPacket received:" + 
 						 "\nFrom host: "+ receivePacket.getAddress() +
 						 "\nHost port: "+ receivePacket.getPort() +
-						 "\nLength: "+ receivePacket.getLength() +
-						 "\nContaining:\n\t" + received_msg +
-						 "\nType:\n\t"+ test.getClass().getName());
-					
-				 //ACTION RECOGNITION
+						// "\nLength: "+ receivePacket.getLength() +
+						 "\nContaining: " + received_msg +
+						 "\nType: "+ test.getClass().getName() );
+				 
+		//*******************************		 
+		//		ACTION RECOGNITION
+		//*******************************
 				 //checks the type of the received messages and runs appropriate Action
 				 if(test.getClass().getName().equals("Message.Request")){
 					 
-					 displayMessage("\nRequest received!");
+					 displayMessage("\n\tRequest received!");
 					 processRequest((Request) test, receivePacket.getAddress(), receivePacket.getPort());
 						
 					//sendPrepareToReplicas( receivePacket );
 				}
 				else if (test.getClass().getName().equals("Message.Prepare")){
 						
-					displayMessage("\nPrepare received!");
+					displayMessage("\n\tPrepare received!");
 					processPrepare((Prepare) test);
 						
 				}
 				else if (test.getClass().getName().equals("Message.PrepareOk")){
 						
-					displayMessage("\nPrepareOK received!");
+					displayMessage("\n\tPrepareOK received!");
 					processPrepareOk((PrepareOk) test, receivePacket);		//30-10-2012 - RO
 						
 				}
@@ -166,9 +193,13 @@ public class UDPserver extends JFrame {
 					displayMessage("\nStartView received!");
 					processStartView((StartView) test);		// RO
 						
-				} 
+				}
+				else if (test.getClass().getName().equals("Message.Heartbeat")){ // problem here - doesn't detect the type
+					Heartbeat heart = (Heartbeat)test;
+					displayMessage("\nHeartbeat received: " + heart.sendTime);
+				}
 				else{
-					displayMessage("\nInvaild message received!");  // if the message type is invalid
+					displayMessage("\n\tInvaild message received!");  // if the message type is invalid
 				}
 			} // end try
 			catch ( IOException ioException ){
@@ -201,7 +232,7 @@ public class UDPserver extends JFrame {
 	//Send PREPARE to replicas
 	private void sendPrepareToReplicas (Request received_req) throws IOException {
 			
-		displayMessage("\n\nSending Prepare: request to all replicas.");
+		displayMessage("\n\nSending Prepare to all replicas.");
 		//for loop should be here
 		//create prepare message
 		Prepare prepare_msg = new Prepare();
@@ -212,7 +243,7 @@ public class UDPserver extends JFrame {
 			
 		//generate message
 		String message = prepare_msg.toString();
-		displayMessage( "\nPrepare: message\n" );
+		displayMessage( "\nPrepare:"+ message );
 		byte data[] = message.getBytes();
 			
 		DatagramPacket sendPacket1 = new DatagramPacket( 
@@ -227,14 +258,16 @@ public class UDPserver extends JFrame {
 			
 		socket.send( sendPacket2 ); // send packet to the second replica
 			
-		displayMessage( "Prepare sent\n" );
+		lastSend = System.currentTimeMillis(); // updates last Send time
+		
+		displayMessage( "\nPrepare sent\n" );
 	
 	} //end prepare sender
 		
 	//Send PREPAREOK to primary
 	private void sendPrepareOkToPrimary (Prepare prep_msg) throws IOException {
 		
-		displayMessage("\n\nSending PrepareOK  to primary.\n");
+		displayMessage("\nSending PrepareOK  to primary.");
 					
 		//generate message
 		PrepareOk prepareOk_msg = new PrepareOk();
@@ -250,7 +283,7 @@ public class UDPserver extends JFrame {
 			
 		socket.send( sendPacket1 ); // send packet to the primary
 
-		displayMessage( "\nPrepareOK sent\n" );
+		displayMessage( "\nPrepareOK sent" );
 	
 	} //end prepareOk sender
 		
@@ -268,7 +301,7 @@ public class UDPserver extends JFrame {
 		reply_msg.x = request_msg.op + "- reply";		//????????
 			
 		String message = reply_msg.toString();
-		displayMessage( "\nReply: message\n" );
+		displayMessage( "\nSending reply to client!" );
 		byte data[] = message.getBytes();
 			
 		cli_add=state.client_table.get(request_msg.c).c_add;
@@ -279,9 +312,11 @@ public class UDPserver extends JFrame {
 		sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName(cli_add), cli_port );
 			
 		socket.send( sendPacket1 );
+		displayMessage( "\nReply sent" );
 			
 	}// end reply sender
 	
+
 	//Send START VIEW to Servers
 	private void sendStartView(String doviewchange_msg) throws IOException{
 		//generate message
@@ -302,6 +337,32 @@ public class UDPserver extends JFrame {
 		sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName("localhost"), ports[0] );
 			
 		socket.send( sendPacket1 ); // send packet to the second replica
+	}
+	
+	//heartbeat sender
+	private void sendHeartbeat() throws IOException{
+		Heartbeat heart = new Heartbeat();
+		heart.sendTime = System.currentTimeMillis();
+		String message = heart.toString();
+		
+		byte data[] = message.getBytes();
+		displayMessage( "\nSending Heartbeat: " + message);
+		
+		DatagramPacket sendPacket1 = new DatagramPacket( 
+				data, data.length,
+				InetAddress.getByName("localhost"), ports[1] ); //should be taken from config
+			
+		socket.send( sendPacket1 ); // send packet to the first replica
+		
+		DatagramPacket sendPacket2 = new DatagramPacket(  
+				data, data.length,
+				InetAddress.getByName("localhost"), ports[2] ); //should be taken from config
+			
+		socket.send( sendPacket2 ); // send packet to the second replica
+		
+		displayMessage( "\nHeartbeat sent!" );
+		
+		
 	}
 		
 	//********************************************************************* 
@@ -337,6 +398,9 @@ public class UDPserver extends JFrame {
 			state.client_table.put(request.c, cli_tab); // update the VR state
 			try{
 				sendPrepareToReplicas(request); //sendPrepareToReplicas caused by the request
+				//TODO
+				//Replicas should somehow obtain the clients addres 
+				//it could be done by adding new fields to Request or Prepare message
 			}
 			catch ( IOException ioException ){
 				displayMessage( ioException.toString() + "\n" );
@@ -362,10 +426,7 @@ public class UDPserver extends JFrame {
 			
 			state.op_number++; //increment op_number
 						
-			//update log
-			state.log.add(request);
-			
-			
+						
 			//update client table
 			if(state.client_table.containsKey(request.c)){ 		//checks if client table exists for this client
 				cli_tab =  state.client_table.get(request.c);	//loads client table
@@ -420,6 +481,7 @@ public class UDPserver extends JFrame {
 				}
 			}
 			
+
 			if (nr_ok>=(config.length-1)/2) {							//check if there are enough prepareOk's
 				try {
 					state.commit_number=prepareOk.n;							//update commit number
@@ -427,10 +489,11 @@ public class UDPserver extends JFrame {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-						
 			}
 		}
-	}	// end prepareOk processor
+	}
+						
+		// end prepareOk processor
 	
 	//DoViewChange processor
 	
@@ -497,39 +560,44 @@ public class UDPserver extends JFrame {
 	}
 	
 	//executes commands given to the server
-//	private void executeCommand(String command) {
-//		switch (command){
-//			case "op": // display op-number
-//				displayArea.append( "\n Current op-number is:" + state.op_number +"\n" ); 
-//				break;
-//			case "log": //displays the log
-//				displayLog(); 
-//				break;
-//			case "client-tab":
-//				displayClientTable();
-//				break;
-//			case "info":
-//				displayMessage( "\nState:" + state.status +
-//						 		"\nView number: "+ state.view_number +
-//						 		"\nReplica number: "+ state.rep_number +
-//						 		"\nOp number: "+ state.op_number + "\n");
-//				break;
-//			default:
-//				displayArea.append("\nCommand not supported\n");
-//				break;
-//		}
-//		
-//		
-//	}
+
+
+
+	private void executeCommand(String command) {
+		switch (command){
+			case "op": // display op-number
+				displayArea.append( "\nCurrent op-number is:" + state.op_number +"\n" ); 
+				break;
+			case "log": //displays the log
+				displayLog(); 
+				break;
+			case "client-tab":
+				displayClientTable();
+				break;
+			case "info":
+				displayMessage( "\n\tInfo:" +
+								"\nState:" + state.status +
+						 		"\nView number: "+ state.view_number +
+						 		"\nReplica number: "+ state.rep_number +
+						 		"\nOp number: "+ state.op_number + "\n");
+				break;
+			default:
+				displayArea.append("\nCommand not supported\n");
+				break;
+		}
+		
+		
+	}
+
 	
 	//displays client table
 	private void displayClientTable() {
-		displayArea.append("\nCurrent client table:\n");
+		displayArea.append("\n\tCurrent client table:");
 		for (ClientTab value : state.client_table.values()) {
 			displayMessage( "\nClient:" + value.c_id +
 			 		"\nRecen request: "+ value.recent +
-			 		"\nCommited: "+ value.commited +
-			 		"\nAddress&port: "+ value.c_add + ":" + value.c_port + "\n");
+			 		"\nCommited: "+ value.commited + "\n"); //+
+			 	//	"\nAddress&port: "+ value.c_add + ":" + value.c_port + "\n");
 		}   
 		
 	}
@@ -537,7 +605,7 @@ public class UDPserver extends JFrame {
 	//method that displays current log
 	private void displayLog() {
 		
-		displayArea.append( "\n Current log:\n" );
+		displayArea.append( "\n\tCurrent log:" );
 		
 		Iterator it = state.log.iterator(); //initialize iterator for log list
 		int i=0; //
@@ -573,6 +641,83 @@ public class UDPserver extends JFrame {
 	//							END UTIL METHODS
 	//*********************************************************************	
 		
+	
+	
+	
+	//*********************************************************************
+	//							TIMERS - FAILURE DETECTORS
+	//*********************************************************************
+	
+	
+	//heartbeat timer on primary. Sends heartbeat to replicas if no message has been sent within timeout
+	Thread heartbeatTimer = new Thread(){
+		public void run(){
+			long sleepTime = timeout; //time to sleep
+			long sendInterval;
+			while(true){
+				try{
+					displayMessage("\nheartbeat timer goes to sleep for: " + sleepTime + " miliseconds");
+					sleep(sleepTime); //sleeps for the given time 
+					sendInterval = System.currentTimeMillis() - lastSend; //calculates the time period between now and last send 
+					displayMessage("\ncurrent time: " + System.currentTimeMillis() + " send interval: " + sendInterval );
+					if(sendInterval >= timeout){ //checks if the time was exceeded
+						displayMessage("\nTimeout! -- sending Heartbeat");
+						sleepTime = timeout;
+						try{
+							sendHeartbeat(); //sendHeartbeat to replicas						
+						}
+						catch ( IOException ioException ){
+							displayMessage( ioException.toString() + "\n" );
+							ioException.printStackTrace();
+						}
+						
+					}
+					else{
+						displayMessage("\nno timeout");
+						sleepTime = timeout - sendInterval;
+					}
+				}
+				catch (InterruptedException e){
+					e.printStackTrace();
+				}
+
+			}
+		}
+	}; // end heartbeat timer thread
+
+	
+	//watch dog timer on replicas. Checks every (Td + delta) if the message from primary was received. If not starts a view change.
+	Thread watchTimer = new Thread(){
+		public void run(){
+			long timeoutPlusDelay = timeout + transmissionDelay;
+			long sleepTime = timeoutPlusDelay; //time to sleep
+			long receiveInterval;
+			while(true){
+				try{
+					displayMessage("\nWatchDog timer goes to sleep for: " + sleepTime + " miliseconds");
+					sleep(sleepTime); //sleeps for the given time 
+					receiveInterval = System.currentTimeMillis() - lastReceive; //calculates the time period between now and last receive 
+					displayMessage("\ncurrent time: " + System.currentTimeMillis() + " receive interval: " + receiveInterval );
+					if(receiveInterval >= timeoutPlusDelay){ //checks if the time was exceeded
+						displayMessage("\nTimeout! Primary is dead!");
+						sleepTime = timeoutPlusDelay; //TODO start view change instead
+					}
+					else{
+						displayMessage("\nPrimary is alive!");
+						sleepTime = timeoutPlusDelay - receiveInterval;
+					}
+					
+				}
+				catch (InterruptedException e){
+					e.printStackTrace();
+				}
+
+			}
+		}
+	}; //end watch dog timer thread
+	
+	
+	
 }
 
 		

@@ -3,11 +3,11 @@ package Message;
 
 public class Request extends Message {
     
-    public int c; 		// client id
-    public int s; 		// seq no
-    public String op;		// operation
-
+    public int c; // client id
+    public int s; // seq no
+    public String op; // operation
     
+       
     // returns 1 on error, 0 on success
     public int fromString(String[] data) {
         

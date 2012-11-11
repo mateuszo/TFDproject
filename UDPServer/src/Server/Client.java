@@ -1,6 +1,6 @@
 package Server;
 
-// Fig. 24.11: Client.java
+
 // Client that sends and receives packets to/from a server.
 import java.io.IOException;
 import java.io.Serializable;
@@ -19,15 +19,20 @@ import javax.swing.SwingUtilities;
 
 import Message.Request;
 
-public class Client extends JFrame {
+public class Client extends JFrame
+{
 	/**
+	 * 
 	 */
+	
+	//TODO
+	//Clients Timer
 	private static final long serialVersionUID = 1L;
 	private JTextField enterField; // for entering messages
 	private JTextArea displayArea; // for displaying messages
 	private DatagramSocket socket; // socket to connect to server
-	private int c_id; 	//clients id
-	private int seq_number; 	//number of the most recent request
+	private int c_id; //clients id
+	private int seq_number; //number of the most recent request
 	private int serverPort;
 	private String serverAddress;
 	
@@ -73,6 +78,8 @@ public class Client extends JFrame {
 			socketException.printStackTrace();
 			System.exit( 1 );
 		} // end catch
+		//msgSender.start();  //starts automatic message sender
+		this.waitForPackets(); //starts listening
 	} // end Client constructor		
 		
 	// wait for packets to arrive from Server, display packet contents
@@ -89,11 +96,11 @@ public class Client extends JFrame {
 				
 				
 				// display packet contents
-				displayMessage( "\nPacket received:" + 
+				displayMessage( "\n\tPacket received:" + 
 						"\nFrom host: "+ receivePacket.getAddress() +
 						"\nHost port: "+ receivePacket.getPort() +
-						"\nLength: "+ receivePacket.getLength() +
-						"\nContaining:\n\t" + new String( receivePacket.getData(), 0, receivePacket.getLength() ));
+						//"\nLength: "+ receivePacket.getLength() +
+						"\nContaining:" + new String( receivePacket.getData(), 0, receivePacket.getLength() ) +"\n");
 			} // end try
 			catch ( IOException exception )
 			{
@@ -121,9 +128,7 @@ public class Client extends JFrame {
 	
 	//method for sending requests - generates message, and updates the sequence number
 	private void sendRequest( String msg ){ 
-		
-		
-		
+
 		Request message = new Request(); // construction of Request object
 		message.c = c_id;
 		message.s = seq_number;
@@ -149,4 +154,24 @@ public class Client extends JFrame {
 		} // end catch
 		
 	}
+	
+	
+	//auto message sender
+	Thread msgSender = new Thread(){
+		public void run(){
+			Integer arq =0;
+			while(true){
+				try{							
+					sleep(5000);
+				}
+				catch (InterruptedException e){
+					e.printStackTrace();
+				}
+				finally{
+					sendRequest("Automatic Request:" + arq);
+					arq++;
+				}
+			}
+		}
+	};
 } // end class Client
