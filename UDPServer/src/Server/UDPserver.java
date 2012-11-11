@@ -144,13 +144,13 @@ public class UDPserver extends JFrame {
 				 
 				 socket.receive( receivePacket ); // wait to receive packet
 					
-				 // display information from received packet
-				 String received_msg = new String( receivePacket.getData(), 0, receivePacket.getLength() );
-					
+				
+				 String received_msg = new String( receivePacket.getData(), 0, receivePacket.getLength() );		
 				 Message test = Util.fromString(received_msg); // creating object from message
 				
 				 lastReceive = System.currentTimeMillis(); //update lats receive timestamp
 				 
+				  // display information from received packet
 				 displayMessage( "\n\tPacket received:" + 
 						 "\nFrom host: "+ receivePacket.getAddress() +
 						 "\nHost port: "+ receivePacket.getPort() +
@@ -169,11 +169,10 @@ public class UDPserver extends JFrame {
 						
 					//sendPrepareToReplicas( receivePacket );
 				}
-				else if (test.getClass().getName().equals("Message.Prepare")){
-						
+				
+				 else if (test.getClass().getName().equals("Message.Prepare")){	
 					displayMessage("\n\tPrepare received!");
 					processPrepare((Prepare) test);
-						
 				}
 				else if (test.getClass().getName().equals("Message.PrepareOk")){
 						
