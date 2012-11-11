@@ -24,7 +24,7 @@ public class VRstate {
 		//config = ?
 		rep_number = id;
 		op_number = 0; // op_number starts from zero
-		commit_number = 0; //// commit_number starts from zero
+		commit_number = -1; //// commit_number starts from zero
 		view_number = 0; //view starts from zero
 		status = "normal"; //normal status only in this phase of project
 				

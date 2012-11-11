@@ -64,6 +64,7 @@ public class UDPserver extends JFrame {
 		
 		 state.newlog = new ArrayList();	//just for test
 		 
+		 this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  //close operation - added to kill the threads after closing main window
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
 			new ActionListener()
@@ -401,32 +402,33 @@ public class UDPserver extends JFrame {
 		Vector<Integer> rep_counter;
 		PrepareOk prepareOk = prepOk_msg;
 		int nr_ok=0;
-		
-		if ((state.prepareOk_counter.isEmpty()) || (!state.prepareOk_counter.containsKey(prepareOk.n))){
-			rep_counter = new Vector<Integer>();
-			rep_counter.addElement(prepareOk.i);
-			state.prepareOk_counter.put(prepareOk.n,rep_counter);
-		}
-		else {
-			rep_counter=state.prepareOk_counter.get(prepareOk.n);
-			rep_counter.addElement(prepareOk.i);
-			state.prepareOk_counter.put(prepareOk.n,rep_counter);
-		}
-		
-		for (int r_id=0;r_id<config.length;r_id++){			//Looks for the prepareOk msg from each replica 
-			if (!(state.prepareOk_counter.get(prepareOk.n).lastIndexOf(r_id)==-1)){
-				nr_ok++;
+		if(prepareOk.n!=state.commit_number){ // cheks if the message with number n was already commited
+			if ((state.prepareOk_counter.isEmpty()) || (!state.prepareOk_counter.containsKey(prepareOk.n))){
+				rep_counter = new Vector<Integer>();
+				rep_counter.addElement(prepareOk.i);
+				state.prepareOk_counter.put(prepareOk.n,rep_counter);
 			}
-		}
-		
-		if (nr_ok>=config.length/config.length) {							//check if there are enough prepareOk's
-			try {
-				state.commit_number=prepareOk.n;							//update commit number
-				sendReplyToClient(prepareOk, getReply(prepareOk.n));		//sendReply
-			} catch (IOException e) {
-				e.printStackTrace();
+			else {
+				rep_counter=state.prepareOk_counter.get(prepareOk.n);
+				rep_counter.addElement(prepareOk.i);
+				state.prepareOk_counter.put(prepareOk.n,rep_counter);
 			}
-					
+			
+			for (int r_id=0;r_id<config.length;r_id++){			//Looks for the prepareOk msg from each replica 
+				if (!(state.prepareOk_counter.get(prepareOk.n).lastIndexOf(r_id)==-1)){
+					nr_ok++;
+				}
+			}
+			
+			if (nr_ok>=(config.length-1)/2) {							//check if there are enough prepareOk's
+				try {
+					state.commit_number=prepareOk.n;							//update commit number
+					sendReplyToClient(prepareOk, getReply(prepareOk.n));		//sendReply
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+						
+			}
 		}
 	}	// end prepareOk processor
 	
