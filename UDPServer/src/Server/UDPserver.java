@@ -66,7 +66,7 @@ public class UDPserver extends JFrame {
 		 lastSend = System.currentTimeMillis(); //initializing
 		 lastSend = System.currentTimeMillis();
 		  
-		 
+		 this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  //close operation - added to kill the threads after closing main window
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
 			new ActionListener()
@@ -585,7 +585,7 @@ public class UDPserver extends JFrame {
 					displayMessage("\ncurrent time: " + System.currentTimeMillis() + " receive interval: " + receiveInterval );
 					if(receiveInterval >= timeoutPlusDelay){ //checks if the time was exceeded
 						displayMessage("\nTimeout! Primary is dead!");
-						sleepTime = timeoutPlusDelay;
+						sleepTime = timeoutPlusDelay; //TODO start view change instead
 					}
 					else{
 						displayMessage("\nPrimary is alive!");
