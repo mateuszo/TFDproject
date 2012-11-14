@@ -24,6 +24,9 @@ public class Util {
         } else if (data[0].equals("REPLY")) {
             
             obj = new Reply();
+        } else if (data[0].equals("STARTVIEWCHANGE")) {
+        	
+        	obj = new StartViewChange();
         } else if (data[0].equals("STARTVIEW")) {
             
             obj = new StartView();
