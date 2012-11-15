@@ -90,12 +90,6 @@ public class UDPserver extends JFrame {
 						//command
 						String command = event.getActionCommand();
 						executeCommand(command);
-						String message = event.getActionCommand();		//just for test
-						try {											//just for test
-							sendStartView(message);						//just for test
-						} catch (IOException e) {						//just for test
-							e.printStackTrace();						//just for test
-						}
 					} // end actionPerformed
 				} // end inner class
 			); // end call to addActionListener
@@ -117,12 +111,13 @@ public class UDPserver extends JFrame {
 		 } // end catch
 		 
 		 
-		 if(id==0){ //starts heartbeat timer for primary only
+		 if(id==state.view_number){ //starts heartbeat timer for primary only
 			 heartbeatTimer.start(); // starts heartbeat timer
 		 }
 		 else{
 			 watchTimer.start(); //start watch dog/failure detector on replicas
 		 }
+	
 		 
 		 this.waitForPackets(); //starts listening
 	 }
@@ -170,7 +165,8 @@ public class UDPserver extends JFrame {
 						
 					//sendPrepareToReplicas( receivePacket );
 				}
-				else if (test.getClass().getName().equals("Message.Prepare")){	
+				else if (test.getClass().getName().equals("Message.Prepare")){
+					lastReceive = System.currentTimeMillis(); //update lats receive timestamp
 					displayMessage("\n\tPrepare received!");
 					processPrepare((Prepare) test);
 				}
@@ -195,8 +191,9 @@ public class UDPserver extends JFrame {
 						
 				}
 				else if (test.getClass().getName().equals("Message.Heartbeat")){ // problem here - doesn't detect the type
-					Heartbeat heart = (Heartbeat)test;
-					displayMessage("\nHeartbeat received: " + heart.sendTime);
+					lastReceive = System.currentTimeMillis(); //update lats receive timestamp
+					processHeartbeat((Heartbeat)test);
+					displayMessage("\nHeartbeat received!");
 				}
 				else{
 					displayMessage("\n\tInvaild message received!");  // if the message type is invalid
@@ -214,6 +211,8 @@ public class UDPserver extends JFrame {
 	//								SENDERS
 	//********************************************************************* 
 
+
+	
 
 	// echo packet to client
 	private void sendPacketToClient( DatagramPacket receivePacket ) throws IOException {
@@ -334,7 +333,9 @@ public class UDPserver extends JFrame {
 	//heartbeat sender
 	private void sendHeartbeat() throws IOException{
 		Heartbeat heart = new Heartbeat();
-		heart.sendTime = System.currentTimeMillis();
+		heart.v = state.view_number;  //puts the view number into the message
+		heart.k = state.commit_number;  //puts the commit number
+		heart.sendTime = System.currentTimeMillis(); // and the current timestamp
 		String message = heart.toString();
 		
 		byte data[] = message.getBytes();
@@ -493,6 +494,7 @@ public class UDPserver extends JFrame {
 
 			if (nr_ok>=(config.length-1)/2) {							//check if there are enough prepareOk's
 				try {
+					//here request could be passed to the higher level application
 					state.commit_number=prepareOk.n;							//update commit number
 					sendReplyToClient(prepareOk, getReply(prepareOk.n));		//sendReply
 				} catch (IOException e) {
@@ -502,9 +504,20 @@ public class UDPserver extends JFrame {
 		}
 	}// end prepareOk processor
 	
+	//Heartbeat processor
+	private void processHeartbeat(Heartbeat heart) {
+		if(state.view_number==heart.v){ // if the view number is appropriate
+			state.commit_number = heart.k; // update commit number
+			long currentTransmissionDelay = System.currentTimeMillis() - heart.sendTime; //transmission delay calculation
+			displayMessage("\nCurrent transmission delay: " + currentTransmissionDelay);
+		}
+	}
+	
 	// StartViewChange processor
 	private void processStartViewChange(StartViewChange test) {
 		// TODO Auto-generated method stub
+		//StartViewCounter
+		
 		
 	}
 	
