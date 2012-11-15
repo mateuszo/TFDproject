@@ -15,4 +15,5 @@ public class ClientTest
 		
 		
 	} // end main
-} // end class ClientTest
+
+} 	// end class ClientTest

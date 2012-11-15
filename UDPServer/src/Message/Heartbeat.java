@@ -1,18 +1,38 @@
 package Message;
 
 public class Heartbeat extends Message {
-	public long sendTime;
-public int fromString(String[] data) {
+	public int v; // view number
+	public int k; // commit number - op number of last committed request
+	public long sendTime; // timestamp
+	
+	public int fromString(String[] data) {
         
         // check if there are enough elements to decode...
-        if (data.length != 2) {
+        if (data.length != 4) {
             
             return 1;
         }
         
         // ...if first is int
         try {
-          sendTime = Long.parseLong(data[1]);
+          v = Integer.parseInt(data[1]);
+          
+        } catch (NumberFormatException e) {
+          
+          return 1;
+        }
+        // ...if second is int
+        try {
+          k = Integer.parseInt(data[2]);
+          
+        } catch (NumberFormatException e) {
+          
+          return 1;
+        }
+        
+        // ...if third is int
+        try {
+          sendTime = Long.parseLong(data[3]);
           
         } catch (NumberFormatException e) {
           
@@ -24,6 +44,6 @@ public int fromString(String[] data) {
     }
     
     public String toString() {        
-        return "HEARTBEAT;" + sendTime ;
+        return "HEARTBEAT;" + v + ";" + k + ";" + sendTime ;
     }
 }
