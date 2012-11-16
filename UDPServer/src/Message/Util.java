@@ -33,7 +33,10 @@ public class Util {
         } else if (data[0].equals("HEARTBEAT")){
         	
         	obj = new Heartbeat(); 
-        } else {
+        } else if(data[0].equals("DOVIEWCHANGE")){
+        	
+        	obj = new DoViewChange();
+        }else {
             
             obj = new Other();
         }
