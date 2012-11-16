@@ -9,11 +9,14 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Vector;
 
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
@@ -21,17 +24,22 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
+import Message.DoViewChange;
 import Message.Heartbeat;
 import Message.Message;
 import Message.Prepare;
 import Message.PrepareOk;
 import Message.Reply;
 import Message.Request;
+import Message.StartView;
+import Message.StartViewChange;
 import Message.Util;
 import Server.VRstate.ClientTab;
 
 
+//************************
 //group number: tfd013
+//************************
 
 public class UDPserver extends JFrame {
 	 
@@ -39,17 +47,19 @@ public class UDPserver extends JFrame {
 	private JTextArea displayArea; // displays packets received
 	private JTextField enterField; // for entering messages
 	private DatagramSocket socket; // socket to connect to client
-	//private String config[][]={{"localhost","1024"},{"localhost","1025"},{"localhost","1026"}};
+	//config should be loaded from file
+	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};		
 	private int[] ports = {1020,1021,1022};
 	private VRstate state;
 	
 	//Variables for the timers
 	private long timeout; // set the timeout value
-	private long lastSend; //time when last send occured
-	private long lastReceive; // time when last receive occured
+	private long lastSend; //time when last send occurred
+	private long lastReceive; // time when last receive occurred
 	private long transmissionDelay; //Transmission delay time
 	
-	 	 //constructor
+	 	 
+	//constructor
 	 public UDPserver(int id) {
 		 
 		 super( "Replica"+id );
@@ -58,14 +68,18 @@ public class UDPserver extends JFrame {
 		 state = new VRstate(id);
 		 state.client_table = new HashMap<Integer,ClientTab>();
 		 state.log = new ArrayList();
-		 state.prepareOk_counter = new HashMap<Integer,Integer>();	//30-10-2012 - RO
+		 state.prepareOk_counter = new HashMap<Integer,Vector<Integer>>();
+		 state.doViewChange_counter = new HashMap<Integer,Vector<Integer>>();
+		
+		 state.newlog = new ArrayList();	//just for test
 		 
+
 		 //timer values initialization
 		 timeout = 5000; // choose timeout value: T [milliseconds]
 		 transmissionDelay = 100; //choose delta [milliseconds]
 		 lastSend = System.currentTimeMillis(); //initializing
-		 lastSend = System.currentTimeMillis();
-		  
+		 lastReceive = System.currentTimeMillis();
+
 		 this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  //close operation - added to kill the threads after closing main window
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
@@ -82,13 +96,14 @@ public class UDPserver extends JFrame {
 			
 		 add( enterField, BorderLayout.NORTH );
 		 
-		 displayArea = new JTextArea(); // create displayArea
+		 displayArea = new JTextArea(); 								// create displayArea
 		 add( new JScrollPane( displayArea ), BorderLayout.CENTER );
-		 setSize( 400, 300 ); // set size of window
-		 setVisible( true ); // show window
+		 setSize( 400, 300 ); 											// set size of window
+		 setVisible( true ); 											// show window
 		
 		 try {	// create DatagramSocket for sending and receiving packets
-			 socket = new DatagramSocket( ports[rep_id] );
+			 //socket = new DatagramSocket( ports[rep_id] );
+			 socket = new DatagramSocket( Integer.parseInt(config[rep_id][1]) );
 		 }	// end try
 		 catch ( SocketException socketException ) {
 			 socketException.printStackTrace();
@@ -96,12 +111,13 @@ public class UDPserver extends JFrame {
 		 } // end catch
 		 
 		 
-		 if(id==0){ //starts heartbeat timer for primary only
+		 if(id==state.view_number){ //starts heartbeat timer for primary only
 			 heartbeatTimer.start(); // starts heartbeat timer
 		 }
 		 else{
 			 watchTimer.start(); //start watch dog/failure detector on replicas
 		 }
+	
 		 
 		 this.waitForPackets(); //starts listening
 	 }
@@ -124,13 +140,13 @@ public class UDPserver extends JFrame {
 				 
 				 socket.receive( receivePacket ); // wait to receive packet
 					
-				 // display information from received packet
-				 String received_msg = new String( receivePacket.getData(), 0, receivePacket.getLength() );
-					
+				
+				 String received_msg = new String( receivePacket.getData(), 0, receivePacket.getLength() );		
 				 Message test = Util.fromString(received_msg); // creating object from message
 				
 				 lastReceive = System.currentTimeMillis(); //update lats receive timestamp
 				 
+				  // display information from received packet
 				 displayMessage( "\n\tPacket received:" + 
 						 "\nFrom host: "+ receivePacket.getAddress() +
 						 "\nHost port: "+ receivePacket.getPort() +
@@ -150,20 +166,34 @@ public class UDPserver extends JFrame {
 					//sendPrepareToReplicas( receivePacket );
 				}
 				else if (test.getClass().getName().equals("Message.Prepare")){
-						
+					lastReceive = System.currentTimeMillis(); //update lats receive timestamp
 					displayMessage("\n\tPrepare received!");
 					processPrepare((Prepare) test);
-						
 				}
 				else if (test.getClass().getName().equals("Message.PrepareOk")){
-						
 					displayMessage("\n\tPrepareOK received!");
 					processPrepareOk((PrepareOk) test, receivePacket);		//30-10-2012 - RO
+				}
+				else if (test.getClass().getName().equals("Message.StartViewChange")){
+					displayMessage("\n\tStartViewChange received!");
+					processStartViewChange((StartViewChange) test);
+				}
+				else if (test.getClass().getName().equals("Message.DoViewChange")){
+					
+					displayMessage("\nDoViewChange received!");
+					processDoViewChange((DoViewChange) test);		// RO
+						
+				}
+				else if (test.getClass().getName().equals("Message.StartView")){
+					
+					displayMessage("\nStartView received!");
+					processStartView((StartView) test);		// RO
 						
 				}
 				else if (test.getClass().getName().equals("Message.Heartbeat")){ // problem here - doesn't detect the type
-					Heartbeat heart = (Heartbeat)test;
-					displayMessage("\nHeartbeat received: " + heart.sendTime);
+					lastReceive = System.currentTimeMillis(); //update lats receive timestamp
+					processHeartbeat((Heartbeat)test);
+					displayMessage("\nHeartbeat received!");
 				}
 				else{
 					displayMessage("\n\tInvaild message received!");  // if the message type is invalid
@@ -180,6 +210,9 @@ public class UDPserver extends JFrame {
 	//********************************************************************* 
 	//								SENDERS
 	//********************************************************************* 
+
+
+	
 
 	// echo packet to client
 	private void sendPacketToClient( DatagramPacket receivePacket ) throws IOException {
@@ -212,18 +245,9 @@ public class UDPserver extends JFrame {
 		String message = prepare_msg.toString();
 		displayMessage( "\nPrepare:"+ message );
 		byte data[] = message.getBytes();
-			
-		DatagramPacket sendPacket1 = new DatagramPacket( 
-				data, data.length,
-				InetAddress.getByName("localhost"), ports[1] ); //should be taken from config
-			
-		socket.send( sendPacket1 ); // send packet to the first replica
 		
-		DatagramPacket sendPacket2 = new DatagramPacket(  
-				data, data.length,
-				InetAddress.getByName("localhost"), ports[2] ); //should be taken from config
-			
-		socket.send( sendPacket2 ); // send packet to the second replica
+		//broadcast message
+		bcast(data);
 			
 		lastSend = System.currentTimeMillis(); // updates last Send time
 		
@@ -255,7 +279,6 @@ public class UDPserver extends JFrame {
 	} //end prepareOk sender
 		
 	//Send REPLY to client
-	//private void sendReplyToClient (PrepareOk prepareOk_msg, int req_cli) throws IOException {
 	private void sendReplyToClient (PrepareOk prepareOk_msg, Request request_msg) throws IOException {
 		//reply sender - 30-10-2012 - RO
 		String cli_add;
@@ -265,18 +288,13 @@ public class UDPserver extends JFrame {
 		Reply reply_msg = new Reply();
 			 
 		reply_msg.v = prepareOk_msg.v; 	//view number
-		//reply_msg.s = state.op_number; 	//current op_number
 		reply_msg.s = request_msg.s; 		//original seq from request
-		//reply_msg.x = state.log.listIterator(state.log.lastIndexOf());
-		//reply_msg.x ="final reply";		//????????
 		reply_msg.x = request_msg.op + "- reply";		//????????
 			
 		String message = reply_msg.toString();
 		displayMessage( "\nSending reply to client!" );
 		byte data[] = message.getBytes();
 			
-		//cli_add=state.client_table.get(req_cli).c_add;
-		//cli_port=state.client_table.get(req_cli).c_port;
 		cli_add=state.client_table.get(request_msg.c).c_add;
 		cli_port=state.client_table.get(request_msg.c).c_port;
 		//displayMessage( "\nIP: " + cli_add + "Port: " + cli_port );
@@ -289,31 +307,72 @@ public class UDPserver extends JFrame {
 			
 	}// end reply sender
 	
+
+	//Send START VIEW to Servers
+	private void sendStartView(String doviewchange_msg) throws IOException{  //what's the String doviewchange_msg for?
+		//generate message
+		StartView startView_msg = new StartView();
+		
+		startView_msg.v=1;		//view number
+		//startView_msg.l=doviewchange_msg.l; 	//log
+		startView_msg.l=state.log; 	//log
+		startView_msg.n=1; 	//current op_number
+		startView_msg.k=2; 	//current commit_number		
+							
+		String message = startView_msg.toString();
+		displayMessage( "\nSTARTVIEW: message\n" );
+		byte data[] = message.getBytes();
+					
+		displayMessage( "\nData: " + data );
+		DatagramPacket sendPacket1 = null;
+		sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName("localhost"), ports[0] );
+			
+		socket.send( sendPacket1 ); // send packet to the second replica
+	}
 	
 	//heartbeat sender
 	private void sendHeartbeat() throws IOException{
 		Heartbeat heart = new Heartbeat();
-		heart.sendTime = System.currentTimeMillis();
+		heart.v = state.view_number;  //puts the view number into the message
+		heart.k = state.commit_number;  //puts the commit number
+		heart.sendTime = System.currentTimeMillis(); // and the current timestamp
 		String message = heart.toString();
 		
 		byte data[] = message.getBytes();
 		displayMessage( "\nSending Heartbeat: " + message);
 		
-		DatagramPacket sendPacket1 = new DatagramPacket( 
-				data, data.length,
-				InetAddress.getByName("localhost"), ports[1] ); //should be taken from config
-			
-		socket.send( sendPacket1 ); // send packet to the first replica
+		//broadcast heartbeat
+		bcast(data);
 		
-		DatagramPacket sendPacket2 = new DatagramPacket(  
-				data, data.length,
-				InetAddress.getByName("localhost"), ports[2] ); //should be taken from config
-			
-		socket.send( sendPacket2 ); // send packet to the second replica
 		
 		displayMessage( "\nHeartbeat sent!" );
+	}
+	
+	//StartViewChange sender
+	private void sendStartViewChange(StartViewChange startViewChange_msg) throws IOException{
 		
+		String message = startViewChange_msg.toString();
 		
+		byte data[] = message.getBytes();
+		displayMessage( "\nSending StartViewChange: " + message);
+		
+		//broadcast message 
+		bcast(data);
+		displayMessage( "\nStartViewChange sent!");
+	}
+	
+	
+	//broadcast data
+	private void bcast(byte data[]) throws IOException{
+		for (int ip = 0; ip < config.length; ip++) {
+		   	if(ip!=state.rep_number){ // doesn't allow to send message to itself
+			DatagramPacket sendPacket = new DatagramPacket( 
+		   			data, data.length,
+		   			InetAddress.getByName(config[ip][0]), Integer.parseInt(config[ip][1]) ); 
+		       			
+		   	socket.send( sendPacket ); // send packet to the first replica
+		   	}
+		}
 	}
 		
 	//********************************************************************* 
@@ -335,7 +394,7 @@ public class UDPserver extends JFrame {
 		if(state.client_table.containsKey(request.c)){ 		//checks if client table exists for this client
 			cli_tab =  state.client_table.get(request.c);	//loads client table
 		}
-		else{ 		//if not put new client tab into state
+		else{ 												//if not put new client table into state
 			cli_tab.c_id = request.c;
 			cli_tab.c_add=cli_add.getHostName();   
 			cli_tab.c_port=cli_port;
@@ -350,7 +409,7 @@ public class UDPserver extends JFrame {
 			try{
 				sendPrepareToReplicas(request); //sendPrepareToReplicas caused by the request
 				//TODO
-				//Replicas should somehow obtain the clients addres 
+				//Replicas should somehow obtain the clients address 
 				//it could be done by adding new fields to Request or Prepare message
 			}
 			catch ( IOException ioException ){
@@ -361,7 +420,7 @@ public class UDPserver extends JFrame {
 			state.op_number++; //increment the op_number
 			
 		}
-		else{
+		else{ //request has been previously received
 			//drop request, resent reply
 		}
 	} //end request processor
@@ -410,36 +469,100 @@ public class UDPserver extends JFrame {
 	//PrepareOk processor
 		
 	private void processPrepareOk(PrepareOk prepOk_msg, DatagramPacket receivePacket){
-			
-		Integer nr_ok=0;
+		
+		Vector<Integer> rep_counter;
 		PrepareOk prepareOk = prepOk_msg;
-		int req_cli;
-			
-		if(state.prepareOk_counter.containsKey(prepareOk.n)){ 	//checks if prepareOk counter exists for this client
-			nr_ok=state.prepareOk_counter.get(prepareOk.n);
-		}
-		nr_ok++;					//update prepareOk counter
-		state.prepareOk_counter.put(prepareOk.n, nr_ok);
-			
-		if (nr_ok>=2) {		//check if there are enough prepareOk's
-			try {
-				state.commit_number=prepareOk.n;				//update commit number
-				displayMessage("\nEnough PrepareOK's received!");
-				// here should be delivery/commit
-				//req_cli=state.log.get(state.log.size()-1).c;	//get request client
-
-				
-				//sendReplyToClient(prepOk_msg, req_cli);			//sendReply
-				sendReplyToClient(prepOk_msg, getReply(prepareOk.n));			//sendReply
-				
-				
-			} catch (IOException e) {
-				e.printStackTrace();
+		int nr_ok=0;
+		if(prepareOk.n!=state.commit_number){ // checks if the message with number n was already commited
+			if ((state.prepareOk_counter.isEmpty()) || (!state.prepareOk_counter.containsKey(prepareOk.n))){
+				rep_counter = new Vector<Integer>();
+				rep_counter.addElement(prepareOk.i);
+				state.prepareOk_counter.put(prepareOk.n,rep_counter);
 			}
+			else {
+				rep_counter=state.prepareOk_counter.get(prepareOk.n);
+				rep_counter.addElement(prepareOk.i);
+				state.prepareOk_counter.put(prepareOk.n,rep_counter);
+			}
+			
+			for (int r_id=0;r_id<config.length;r_id++){			//Looks for the prepareOk msg from each replica 
+				if (!(state.prepareOk_counter.get(prepareOk.n).lastIndexOf(r_id)==-1)){
+					nr_ok++;
+				}
+			}
+			
+
+			if (nr_ok>=(config.length-1)/2) {							//check if there are enough prepareOk's
+				try {
+					//here request could be passed to the higher level application
+					state.commit_number=prepareOk.n;							//update commit number
+					sendReplyToClient(prepareOk, getReply(prepareOk.n));		//sendReply
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}// end prepareOk processor
+	
+	//Heartbeat processor
+	private void processHeartbeat(Heartbeat heart) {
+		if(state.view_number==heart.v){ // if the view number is appropriate
+			state.commit_number = heart.k; // update commit number
+			long currentTransmissionDelay = System.currentTimeMillis() - heart.sendTime; //transmission delay calculation
+			displayMessage("\nCurrent transmission delay: " + currentTransmissionDelay);
+		}
+	}
+	
+	// StartViewChange processor
+	private void processStartViewChange(StartViewChange test) {
+		// TODO Auto-generated method stub
+		//StartViewCounter
+		
+		
+	}
+	
+	//DoViewChange processor
+	
+	private void processDoViewChange(DoViewChange doviewchange_msg){
+		Vector<Integer> rep_counter;
+		DoViewChange doViewchange = doviewchange_msg;
+		int nr_ok=0;
+		
+		if ((state.doViewChange_counter.isEmpty()) || (!state.doViewChange_counter.containsKey(doViewchange.v))){
+			rep_counter = new Vector<Integer>();
+			rep_counter.addElement(doViewchange.i);
+			state.doViewChange_counter.put(doViewchange.v,rep_counter);
+		}
+		else {
+			rep_counter=state.doViewChange_counter.get(doViewchange.v);
+			rep_counter.addElement(doViewchange.i);
+			state.doViewChange_counter.put(doViewchange.v,rep_counter);
+		}
+		
+		for (int r_id=0;r_id<config.length;r_id++){			//Looks for the prepareOk msg from each replica 
+			if (!(state.doViewChange_counter.get(doViewchange.v).lastIndexOf(r_id)==-1)){
+				nr_ok++;
+			}
+		}
+		
+		if (nr_ok>=config.length/config.length) {							//check if there are enough prepareOk's
+			state.view_number=doViewchange.v;							//update commit number
+			//sendStartView(doviewchange_msg);			//send View Change
 					
 		}
-	}	// end prepareOk processor
-
+	}
+	//StartView processor
+	
+	private void processStartView(StartView StartView_msg){
+		StartView startView = StartView_msg;
+		
+		state.view_number=startView.v;
+		state.op_number=startView.n;
+		state.commit_number=startView.k;
+		state.newlog=startView.l;
+		
+		
+	}
 	
 	//********************************************************************* 
 	//							UTIL METHODS
@@ -463,6 +586,9 @@ public class UDPserver extends JFrame {
 	}
 	
 	//executes commands given to the server
+
+
+
 	private void executeCommand(String command) {
 		switch (command){
 			case "op": // display op-number
@@ -479,7 +605,9 @@ public class UDPserver extends JFrame {
 								"\nState:" + state.status +
 						 		"\nView number: "+ state.view_number +
 						 		"\nReplica number: "+ state.rep_number +
-						 		"\nOp number: "+ state.op_number + "\n");
+						 		"\nOp number: "+ state.op_number + 
+						 		"\nLast receive:" + lastReceive +
+						 		"\nLast send:" + lastSend +"\n");
 				break;
 			default:
 				displayArea.append("\nCommand not supported\n");
@@ -488,6 +616,7 @@ public class UDPserver extends JFrame {
 		
 		
 	}
+
 	
 	//displays client table
 	private void displayClientTable() {
@@ -522,6 +651,36 @@ public class UDPserver extends JFrame {
 		
 	}
 	
+	protected String getIpAddress(){
+	    
+		InetAddress thisIp;
+		String thisIpAddress=null;
+
+	    try{
+	    	thisIp = InetAddress.getLocalHost();
+	    	thisIpAddress = thisIp.getHostAddress().toString();
+	    }
+	    catch(Exception e){}
+		
+	    return thisIpAddress;
+	}
+	
+	
+	
+	private void viewChange(){
+		state.status = "view-change"; //change status to view-change
+		int newView_number = state.view_number + 1 ; //the new view number (incremented old one)
+		StartViewChange startViewChange_msg = new StartViewChange();
+		startViewChange_msg.i = state.rep_number; //set the id
+		startViewChange_msg.v = newView_number; //sets the new view number
+		
+		try {
+			sendStartViewChange(startViewChange_msg);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
 	//********************************************************************* 
 	//							END UTIL METHODS
 	//*********************************************************************	
@@ -541,12 +700,13 @@ public class UDPserver extends JFrame {
 			long sendInterval;
 			while(true){
 				try{
-					displayMessage("\nheartbeat timer goes to sleep for: " + sleepTime + " miliseconds");
+					// all displays are commented. Uncomment to see more information about timer's action.
+					// displayMessage("\nheartbeat timer goes to sleep for: " + sleepTime + " miliseconds");
 					sleep(sleepTime); //sleeps for the given time 
 					sendInterval = System.currentTimeMillis() - lastSend; //calculates the time period between now and last send 
-					displayMessage("\ncurrent time: " + System.currentTimeMillis() + " send interval: " + sendInterval );
+					// displayMessage("\ncurrent time: " + System.currentTimeMillis() + " send interval: " + sendInterval );
 					if(sendInterval >= timeout){ //checks if the time was exceeded
-						displayMessage("\nTimeout! -- sending Heartbeat");
+						// displayMessage("\nTimeout! -- sending Heartbeat");
 						sleepTime = timeout;
 						try{
 							sendHeartbeat(); //sendHeartbeat to replicas						
@@ -558,7 +718,7 @@ public class UDPserver extends JFrame {
 						
 					}
 					else{
-						displayMessage("\nno timeout");
+						// displayMessage("\nno timeout");
 						sleepTime = timeout - sendInterval;
 					}
 				}
@@ -579,13 +739,14 @@ public class UDPserver extends JFrame {
 			long receiveInterval;
 			while(true){
 				try{
-					displayMessage("\nWatchDog timer goes to sleep for: " + sleepTime + " miliseconds");
+					// displayMessage("\nWatchDog timer goes to sleep for: " + sleepTime + " miliseconds");
 					sleep(sleepTime); //sleeps for the given time 
 					receiveInterval = System.currentTimeMillis() - lastReceive; //calculates the time period between now and last receive 
-					displayMessage("\ncurrent time: " + System.currentTimeMillis() + " receive interval: " + receiveInterval );
+					// displayMessage("\ncurrent time: " + System.currentTimeMillis() + " receive interval: " + receiveInterval );
 					if(receiveInterval >= timeoutPlusDelay){ //checks if the time was exceeded
 						displayMessage("\nTimeout! Primary is dead!");
-						sleepTime = timeoutPlusDelay; //TODO start view change instead
+						viewChange(); //initialize view-change procedure
+						break; //ends timer thread
 					}
 					else{
 						displayMessage("\nPrimary is alive!");
@@ -609,4 +770,4 @@ public class UDPserver extends JFrame {
 
 		
 	 
-		
+	

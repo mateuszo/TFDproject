@@ -17,15 +17,22 @@ public class Util {
         } else if (data[0].equals("PREPARE")) {
             
             obj = new Prepare();
+        
         } else if (data[0].equals("PREPAREOK")) {
     
             obj = new PrepareOk();
         } else if (data[0].equals("REPLY")) {
             
             obj = new Reply();
+        } else if (data[0].equals("STARTVIEWCHANGE")) {
+        	
+        	obj = new StartViewChange();
+        } else if (data[0].equals("STARTVIEW")) {
+            
+            obj = new StartView();
         } else if (data[0].equals("HEARTBEAT")){
         	
-        	obj = new Heartbeat();        	
+        	obj = new Heartbeat(); 
         } else {
             
             obj = new Other();

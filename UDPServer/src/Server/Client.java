@@ -174,6 +174,4 @@ public class Client extends JFrame
 			}
 		}
 	};
-	
-	
 } // end class Client
