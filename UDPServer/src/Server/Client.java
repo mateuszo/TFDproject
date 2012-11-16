@@ -26,8 +26,8 @@ public class Client extends JFrame {
 	private JTextField enterField; // for entering messages
 	private JTextArea displayArea; // for displaying messages
 	private DatagramSocket socket; // socket to connect to server
-	private int c_id; 	//clients id
-	private int seq_number; 	//number of the most recent request
+	private int c_id; //clients id
+	private int seq_number; //number of the most recent request
 	private int serverPort;
 	private String serverAddress;
 	

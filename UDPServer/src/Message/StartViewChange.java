@@ -1,11 +1,10 @@
 package Message;
 
 
-public class PrepareOk extends Message {
+public class StartViewChange extends Message {
 
-     public int v; 	// view number
-     public int n; 	// op number
-     public int i; 	// replica id
+     public int v; 				// view number
+     public int i; 				// replica id
 
 
      // returns 1 on error, 0 on success
@@ -13,7 +12,7 @@ public class PrepareOk extends Message {
 
 
           // check if there are enough elements to decode...
-          if (data.length != 4) {
+          if (data.length != 3) {
 
                 return 1;
           }
@@ -27,29 +26,20 @@ public class PrepareOk extends Message {
              return 1;
           }
 
-          // ...if second is int
+          // ...if second is List????
           try {
-             n = Integer.parseInt(data[2]);
-
-          } catch (NumberFormatException e) {
-
-             return 1;
-          }
-
-          // ...if third is int
-          try {
-             i = Integer.parseInt(data[3]);
+             i = Integer.parseInt(data[2]);
 
            } catch (NumberFormatException e) {
 
              return 1;
             }
-
+          
           return 0;
      }
 
      public String toString() {
 
-          return "PREPAREOK;" + v + ";" + n + ";" + i;
+          return "STARTVIEWCHANGE;" + v + ";" +  i;
      }
 }

@@ -5,7 +5,7 @@ public class Prepare extends Message {
 	 public int v; 		// view number
 	 public int n; 		// op number
 	 public int k; 		// commit number
-	 public Request r; 		// request from client
+	 public Request r; 	// request from client
 
 
 	 // returns 1 on error, 0 on success

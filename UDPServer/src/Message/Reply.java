@@ -5,7 +5,7 @@ public class Reply extends Message {
 
     public int v; 		// view id
     public int s; 		// seq no
-    public String x; 		// answer
+    public String x; 	// answer
 
 
     // returns 1 on error, 0 on success

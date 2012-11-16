@@ -27,6 +27,7 @@ import Message.PrepareOk;
 import Message.Reply;
 import Message.Request;
 import Message.StartView;
+import Message.StartViewChange;
 import Message.Util;
 import Server.VRstate.ClientTab;
 
@@ -42,7 +43,8 @@ public class UDPserver extends JFrame {
 	private JTextField enterField; // for entering messages
 	private DatagramSocket socket; // socket to connect to client
 	//config,min_quorum should be loaded from file
-	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};
+	//private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};
+	public String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};
 	private int min_quorum=2;	//minimum quorum f+1=2
 	private int[] ports = {1020,1021,1022};
 	private VRstate state;
@@ -57,7 +59,8 @@ public class UDPserver extends JFrame {
 		 state.client_table = new HashMap<Integer,ClientTab>();
 		 state.log = new ArrayList<Request>();
 		 state.prepareOk_counter = new HashMap<Integer,Vector<Integer>>();
-		 state.doViewChange_counter = new HashMap<Integer,Vector<Integer>>();
+		 //state.doViewChange_counter = new HashMap<Integer,Vector<Integer>>();
+		 state.doViewChange_counter = new HashMap<Integer,Vector<DoViewChange>>();
 		
 		 enterField = new JTextField( "Type command here" );
 		 enterField.addActionListener(
@@ -66,8 +69,8 @@ public class UDPserver extends JFrame {
 					public void actionPerformed( ActionEvent event )
 					{
 						//command;
-						//String command = event.getActionCommand();
-						//executeCommand(command);
+						String command = event.getActionCommand();
+						executeCommand(command);
 //						String message = event.getActionCommand();		//just for test
 //						try {											//just for test
 //							sendStartView(message);						//just for test
@@ -149,6 +152,12 @@ public class UDPserver extends JFrame {
 					processPrepareOk((PrepareOk) test, receivePacket);		//30-10-2012 - RO
 						
 				}
+				else if (test.getClass().getName().equals("Message.StartViewChange")){
+					
+					displayMessage("\nStartViewChange received!");
+					processStartViewChange((StartViewChange) test);		// RO
+						
+				} 
 				else if (test.getClass().getName().equals("Message.DoViewChange")){
 					
 					displayMessage("\nDoViewChange received!");
@@ -276,17 +285,44 @@ public class UDPserver extends JFrame {
 			
 	}// end reply sender
 	
+	
+	//Send REPLY to client
+	private void sendDoViewChange () throws IOException {
+					
+		//generate message
+		DoViewChange doViewChange_msg = new DoViewChange();
+						 
+		doViewChange_msg.v = state.view_number; 			//view number
+		doViewChange_msg.l = state.log; 					//log
+		doViewChange_msg.last_v = state.last_norm_view; 	//last view in normal state
+		doViewChange_msg.n = state.op_number; 				//op number
+		doViewChange_msg.k = state.commit_number; 			//commit number
+		doViewChange_msg.i = state.rep_number; 				//replica number
+			
+				
+		String message = doViewChange_msg.toString();
+		displayMessage( "\nDoViewChange_msg:" + message + "\n" );
+		byte data[] = message.getBytes();
+			
+		for (int r_id=0;r_id<config.length;r_id++){		
+			DatagramPacket sendPacket1 = null;
+			sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName("localhost"), Integer.parseInt(config[r_id][1]) );
+			socket.send( sendPacket1 );
+		}	
+				
+	}// end reply sender
+	
+	
 	//Send START VIEW to Servers
 	private void sendStartView(DoViewChange doviewchange_msg) throws IOException{
 	//private void sendStartView(String doviewchange_msg) throws IOException{
 		//generate message
 		StartView startView_msg = new StartView();
 		
-		startView_msg.v=1;						//view number
-		//startView_msg.l=doviewchange_msg.l; 	//log
-		startView_msg.l=state.log; 			//log
-		startView_msg.n=1; 						//current op_number
-		startView_msg.k=2; 						//current commit_number		
+		startView_msg.v=doviewchange_msg.v;		//view number
+		startView_msg.l=doviewchange_msg.l; 	//log
+		startView_msg.n=doviewchange_msg.n; 	//current op_number
+		startView_msg.k=doviewchange_msg.k; 	//current commit_number		
 							
 		String message = startView_msg.toString();
 		displayMessage( "\nSTARTVIEW: message\n" );
@@ -434,40 +470,84 @@ public class UDPserver extends JFrame {
 		}
 	}	// end prepareOk processor
 	
-	//DoViewChange processor
 	
+	
+	//StartViewChange processor
+	
+	private void processStartViewChange(StartViewChange StartViewChange_msg){
+			
+		StartViewChange startViewChange = StartViewChange_msg;
+			
+		if (state.view_number==startViewChange.v) {
+			try {
+				sendDoViewChange();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+			
+	}
+	
+		
+	//DoViewChange processor
+		
 	private void processDoViewChange(DoViewChange doviewchange_msg){
-		Vector<Integer> rep_counter;
+			
+		//Vector<Integer> rep_counter;
+		Vector<DoViewChange> rep_counter;
 		DoViewChange doViewchange = doviewchange_msg;
 		int nr_ok=0;
+		int mapvectorsize;
 		
 		if ((state.doViewChange_counter.isEmpty()) || (!state.doViewChange_counter.containsKey(doViewchange.v))){
-			rep_counter = new Vector<Integer>();
-			rep_counter.addElement(doViewchange.i);
+			rep_counter = new Vector<DoViewChange>();
+			rep_counter.addElement(doViewchange);
 			state.doViewChange_counter.put(doViewchange.v,rep_counter);
 		}
 		else {
 			rep_counter=state.doViewChange_counter.get(doViewchange.v);
-			rep_counter.addElement(doViewchange.i);
+			rep_counter.addElement(doViewchange);
 			state.doViewChange_counter.put(doViewchange.v,rep_counter);
 		}
-		
-		for (int r_id=0;r_id<config.length;r_id++){			//Looks for the doViewChange msg from each server 
-			if (!(state.doViewChange_counter.get(doViewchange.v).lastIndexOf(r_id)==-1)){
-				nr_ok++;
+		mapvectorsize=state.doViewChange_counter.get(doViewchange.v).size();	
+		for (int r_id=0;r_id<config.length;r_id++){				//Looks for the doViewChange msg from each server
+			for (int v_pos=0;v_pos<mapvectorsize;v_pos++){			
+				if ((state.doViewChange_counter.get(doViewchange.v).elementAt(v_pos).i==r_id)){
+					nr_ok++;
+				}
 			}
 		}
 		
+		
+//		if ((state.doViewChange_counter.isEmpty()) || (!state.doViewChange_counter.containsKey(doViewchange.v))){
+//			rep_counter = new Vector<Integer>();
+//			rep_counter.addElement(doViewchange.i);
+//			state.doViewChange_counter.put(doViewchange.v,rep_counter);
+//		}
+//		else {
+//			rep_counter=state.doViewChange_counter.get(doViewchange.v);
+//			rep_counter.addElement(doViewchange.i);
+//			state.doViewChange_counter.put(doViewchange.v,rep_counter);
+//		}
+//			
+//		for (int r_id=0;r_id<config.length;r_id++){			//Looks for the doViewChange msg from each server 
+//			if (!(state.doViewChange_counter.get(doViewchange.v).lastIndexOf(r_id)==-1)){
+//				nr_ok++;
+//			}
+//		}
+			
 		if (nr_ok>=min_quorum) {					//check if there are enough doViewChange msg
 			state.view_number=doViewchange.v;		//update view number
 			try {
-				sendStartView(doViewchange);
+				sendStartView(bestDoViewChange(doViewchange.v));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}		//send ViewChange msg
-					
+						
 		}
-	}	// end ViewChange processo
+	}	// end ViewChange process
+	
 	
 	//StartView processor
 	
@@ -480,6 +560,21 @@ public class UDPserver extends JFrame {
 		state.log.clear();
 		state.log=startView.l;
 		
+		state.status="normal";
+		state.last_norm_view=startView.v;
+		
+		//update client table
+		
+		//*************************
+		//confuse about what to do
+		//*************************
+
+		//*************************
+		//look for uncommited msgs
+		//*************************
+
+		//k<last entry in received log???
+		//how do i know that something in the log is not commited? 
 		
 	}
 	
@@ -505,30 +600,30 @@ public class UDPserver extends JFrame {
 	}
 	
 	//executes commands given to the server
-//	private void executeCommand(String command) {
-//		switch (command){
-//			case "op": // display op-number
-//				displayArea.append( "\n Current op-number is:" + state.op_number +"\n" ); 
-//				break;
-//			case "log": //displays the log
-//				displayLog(); 
-//				break;
-//			case "client-tab":
-//				displayClientTable();
-//				break;
-//			case "info":
-//				displayMessage( "\nState:" + state.status +
-//						 		"\nView number: "+ state.view_number +
-//						 		"\nReplica number: "+ state.rep_number +
-//						 		"\nOp number: "+ state.op_number + "\n");
-//				break;
-//			default:
-//				displayArea.append("\nCommand not supported\n");
-//				break;
-//		}
-//		
-//		
-//	}
+	private void executeCommand(String command) {
+		switch (command){
+			case "op": // display op-number
+				displayArea.append( "\n Current op-number is:" + state.op_number +"\n" ); 
+				break;
+			case "log": //displays the log
+				displayLog(); 
+				break;
+			case "client-tab":
+				displayClientTable();
+				break;
+			case "info":
+				displayMessage( "\nState:" + state.status +
+						 		"\nView number: "+ state.view_number +
+						 		"\nReplica number: "+ state.rep_number +
+						 		"\nOp number: "+ state.op_number + "\n");
+				break;
+			default:
+				displayArea.append("\nCommand not supported\n");
+				break;
+		}
+		
+		
+	}
 	
 	//displays client table
 	private void displayClientTable() {
@@ -563,6 +658,8 @@ public class UDPserver extends JFrame {
 		
 	}
 	
+	//method that returns this machine IP Address
+	
 	protected String getIpAddress(){
 	    
 		InetAddress thisIp;
@@ -575,6 +672,41 @@ public class UDPserver extends JFrame {
 	    catch(Exception e){}
 		
 	    return thisIpAddress;
+	}
+	
+	
+	//method that returns the DoViewChange message with best v'
+	
+	private DoViewChange bestDoViewChange(int my_view){
+		
+		int mapvectorsize;
+		int best_pos=0;
+		int best_last_v=0;
+		int best_n=0;
+		
+		mapvectorsize=state.doViewChange_counter.get(my_view).size();
+		
+		best_last_v=state.doViewChange_counter.get(my_view).elementAt(0).last_v;
+		best_n=state.doViewChange_counter.get(my_view).elementAt(0).n;
+		
+		for (int r_id=0;r_id<config.length;r_id++){			//Looks for the doViewChange msg from each server
+			for (int v_pos=0;v_pos<mapvectorsize;v_pos++){			//Looks for the doViewChange msg from each server
+				if ((state.doViewChange_counter.get(my_view).elementAt(v_pos).last_v>best_last_v)){
+					best_pos=v_pos;
+					best_last_v=state.doViewChange_counter.get(my_view).elementAt(v_pos).last_v;
+					best_n=best_last_v=state.doViewChange_counter.get(my_view).elementAt(v_pos).n;
+				}
+				else if ((state.doViewChange_counter.get(my_view).elementAt(v_pos).last_v==best_last_v)){
+					if ((state.doViewChange_counter.get(my_view).elementAt(v_pos).n>best_n)){
+						best_pos=v_pos;
+						best_last_v=state.doViewChange_counter.get(my_view).elementAt(v_pos).last_v;
+						best_n=state.doViewChange_counter.get(my_view).elementAt(v_pos).n;
+					}
+				}
+			}
+		}
+		
+		return state.doViewChange_counter.get(my_view).elementAt(best_pos);
 	}
 	
 	//********************************************************************* 
