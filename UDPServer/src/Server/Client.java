@@ -45,7 +45,7 @@ public class Client extends JFrame
 		//some configuration here
 		c_id = id; //client's id
 		seq_number = 1;  //message sequence number
-		serverPort = 1020; //server port
+		serverPort = 1021; //server port
 		serverAddress = "localhost"; // server IP address
 		
 		

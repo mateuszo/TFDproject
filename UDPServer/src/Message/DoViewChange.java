@@ -18,11 +18,11 @@ public class DoViewChange extends Message {
 
 
           // check if there are enough elements to decode...
-          if (data.length != 7) {
+        /*  if (data.length < 7) {
 
                 return 1;
           }
-
+		*/
           // ...if first is int
           try {
              v = Integer.parseInt(data[1]);
@@ -33,17 +33,23 @@ public class DoViewChange extends Message {
           }
 
           // ...if second is List????
-//          try {
-//             l = data[2];
-//
-//          } catch (NumberFormatException e) {
-//
-//             return 1;
-//          }
+          
+          String str_req= new String();
+          
+          try {
+        	  for (int idx=2;idx<data.length-4;idx++){
+        		  str_req=str_req + ";" + data[idx];
+        	  }
+             
+        	  l = Util.tempLog(str_req);
+          }
+          catch (Exception e) {
+        	  return 1;
+          }
 
        // ...if third is int
           try {
-             last_v = Integer.parseInt(data[3]);
+             last_v = Integer.parseInt(data[data.length-4]);
 
            } catch (NumberFormatException e) {
 
@@ -52,7 +58,7 @@ public class DoViewChange extends Message {
           
        // ...if fourth is int
           try {
-             n = Integer.parseInt(data[4]);
+             n = Integer.parseInt(data[data.length-3]);
 
            } catch (NumberFormatException e) {
 
@@ -62,7 +68,7 @@ public class DoViewChange extends Message {
           
           // ...if fifth is int
           try {
-             k = Integer.parseInt(data[5]);
+             k = Integer.parseInt(data[data.length-2]);
 
            } catch (NumberFormatException e) {
 
@@ -71,7 +77,7 @@ public class DoViewChange extends Message {
 
        // ...if sixth is int
           try {
-             i = Integer.parseInt(data[6]);
+             i = Integer.parseInt(data[data.length-1]);
 
            } catch (NumberFormatException e) {
 

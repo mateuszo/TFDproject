@@ -255,8 +255,9 @@ public class UDPserver extends JFrame {
 		String message = prepareOk_msg.toString();
 		byte data[] = message.getBytes();
 			
-		DatagramPacket sendPacket1 = new DatagramPacket( data, data.length,
-					InetAddress.getByName("localhost"), ports[0] ); //should be taken from config
+		DatagramPacket sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName(
+				config[state.view_number%config.length][0]), Integer.parseInt(config[state.view_number%config.length][1]) );
+
 			
 		socket.send( sendPacket1 ); // send packet to the primary
 
@@ -312,11 +313,13 @@ public class UDPserver extends JFrame {
 		displayMessage( "\nDoViewChange_msg:" + message + "\n" );
 		byte data[] = message.getBytes();
 			
-		if(state.view_number!=state.rep_number){ // not to send a message o itself
-			DatagramPacket sendPacket1 = null;
-			sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName("localhost"), Integer.parseInt(config[state.view_number%config.length][1]) );
-			socket.send( sendPacket1 );
-		}
+		DatagramPacket sendPacket1 = null;
+		
+		//send to primary
+		sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName(config[state.view_number%config.length][0]), Integer.parseInt(config[state.view_number%config.length][1]) );
+			
+		socket.send( sendPacket1 );
+		
 		displayMessage("\nDoviewChange sent to: " + config[state.view_number%config.length][1] );
 			
 	}// end reply sender
@@ -340,7 +343,9 @@ public class UDPserver extends JFrame {
 		
 		//put broadcast here
 		bcast(data);
-		displayMessage("\nStartView sent to all!");
+		displayMessage("\nStartView sent to all!\n Now I'm the new primary, waiting for new requests.");
+		
+		
 	}
 	
 	//heartbeat sender
@@ -387,6 +392,18 @@ public class UDPserver extends JFrame {
 		   	}
 		}
 	}
+	//broadcast data to all 
+		private void bcast_all(byte data[]) throws IOException{
+			for (int ip = 0; ip < config.length; ip++) {
+			   	
+				DatagramPacket sendPacket = new DatagramPacket( 
+			   			data, data.length,
+			   			InetAddress.getByName(config[ip][0]), Integer.parseInt(config[ip][1]) ); 
+			       			//displayMessage("\nMessage sent to" + config[ip][0] +"@" + config[ip][1]);
+			   	socket.send( sendPacket ); // send packet to the first replica
+			   	
+			}
+		}
 		
 	//********************************************************************* 
 	//							END OF SENDERS
@@ -531,18 +548,22 @@ public class UDPserver extends JFrame {
 	private void processStartViewChange(StartViewChange StartViewChange_msg){
 			
 		StartViewChange startViewChange = StartViewChange_msg;
-			
+		if(state.status.equals("normal")){ //if replica notices the view change from the StartViewMessage
+			state.view_number=startViewChange.v;
+		}
+		
+		
 		//TODO
 		//startview counting
 		
-		if (state.view_number==startViewChange.v) {
-			try {			
-				sendDoViewChange();
-			} catch (IOException e) {
-				
-				e.printStackTrace();
-			}
+		
+		try {			
+			sendDoViewChange();
+		} catch (IOException e) {
+			
+			e.printStackTrace();
 		}
+		
 			
 	}
 	
@@ -575,11 +596,12 @@ public class UDPserver extends JFrame {
 			}
 		}
 		
-		if (nr_ok>=(config.length-1)/2) {							//check if there are enough doViewChange
+		if (nr_ok>=((config.length-1)/2)+1) {							//check if there are enough doViewChange
 			state.view_number=doViewchange.v;							//update commit number
 			//sendStartView(doviewchange_msg);			//send View Change
 			 try {
 				    sendStartView(bestDoViewChange(doViewchange.v));
+				    state.status="normal"; 
 				   } catch (IOException e) {
 				    e.printStackTrace();
 				   }  //send ViewChange msg
@@ -602,7 +624,7 @@ public class UDPserver extends JFrame {
 		state.status="normal";
 		state.last_norm_view=startView.v;
 		
-		displayMessage("\nI'm the new primary");
+		
 		//update client table
 		
 		//*************************
@@ -724,17 +746,20 @@ public class UDPserver extends JFrame {
 	
 	
 	private void viewChange(){
-		state.status = "view-change"; //change status to view-change
-		state.view_number = state.view_number + 1 ; //the new view number (incremented old one)
-		StartViewChange startViewChange_msg = new StartViewChange();
-		startViewChange_msg.i = state.rep_number; //set the id
-		startViewChange_msg.v = state.view_number; //sets the new view number
-		
-		try {
-			sendStartViewChange(startViewChange_msg);
-		} catch (IOException e) {
-			e.printStackTrace();
+		if(state.status.equals("normal")){ //if the status is normal
+			state.status = "view-change"; //change status to view-change
+			state.view_number = state.view_number + 1 ; //the new view number (incremented old one)
+			StartViewChange startViewChange_msg = new StartViewChange();
+			startViewChange_msg.i = state.rep_number; //set the id
+			startViewChange_msg.v = state.view_number; //sets the new view number
+			
+			try {
+				sendStartViewChange(startViewChange_msg);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
+		
 	}
 
 //method that returns the DoViewChange message with best v'
