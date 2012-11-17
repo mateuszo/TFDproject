@@ -54,7 +54,7 @@ public class UDPserver extends JFrame {
 	private long lastSend; //time when last send occurred
 	private long lastReceive; // time when last receive occurred
 	private long transmissionDelay; //Transmission delay time
-	
+	private WatchTimer watchDog;
 	 	 
 	//constructor
 	 public UDPserver(int id) {
@@ -113,7 +113,7 @@ public class UDPserver extends JFrame {
 			 heartbeatTimer.start(); // starts heartbeat timer
 		 }
 		 else{
-			 watchTimer.start(); //start watch dog/failure detector on replicas
+			watchDog = new WatchTimer(); //start watch dog/failure detector on replicas
 		 }
 	
 		 
@@ -628,7 +628,7 @@ public class UDPserver extends JFrame {
 		
 		state.status="normal";
 		state.last_norm_view=startView.v;
-		watchTimer.start(); //start watch dog/failure detector on replicas
+		watchDog = new WatchTimer(); //start watch dog/failure detector on replicas
 
 		
 		//update client table
@@ -851,6 +851,40 @@ public class UDPserver extends JFrame {
 
 	
 	//watch dog timer on replicas. Checks every (Td + delta) if the message from primary was received. If not starts a view change.
+	public class WatchTimer extends Thread{
+		public WatchTimer(){
+			start();
+		}
+		public void run(){
+			long timeoutPlusDelay = timeout + transmissionDelay;
+			long sleepTime = timeoutPlusDelay; //time to sleep
+			long receiveInterval;
+			boolean stop = false;
+			while(!stop){
+				try{
+					// displayMessage("\nWatchDog timer goes to sleep for: " + sleepTime + " miliseconds");
+					sleep(sleepTime); //sleeps for the given time 
+					receiveInterval = System.currentTimeMillis() - lastReceive; //calculates the time period between now and last receive 
+					// displayMessage("\ncurrent time: " + System.currentTimeMillis() + " receive interval: " + receiveInterval );
+					if(receiveInterval >= timeoutPlusDelay){ //checks if the time was exceeded
+						stop = true;
+						displayMessage("\nTimeout! Primary is dead!");
+						viewChange(); //initialize view-change procedure
+						return; //ends timer thread
+					}
+					else{
+						displayMessage("\nPrimary is alive!");
+						sleepTime = timeoutPlusDelay - receiveInterval;
+					}
+					
+				}
+				catch (InterruptedException e){
+					e.printStackTrace();
+				}
+
+			}
+		}
+	}
 	private Thread watchTimer = new Thread(){
 		public void run(){
 			long timeoutPlusDelay = timeout + transmissionDelay;

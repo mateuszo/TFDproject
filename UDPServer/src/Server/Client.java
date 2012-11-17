@@ -262,33 +262,5 @@ public class Client extends JFrame
 					
 		}
 	}
-	/*
-	Thread watchTimer = new Thread(){
-			public void run(){
-				int tries = 0; //number of tries already performed
-				boolean stop = false;
-				while(!stop){
-					try {
-							sleep(timeout); // sleeps for the timeout
-						} catch (InterruptedException e) {
-							
-							stop = true;
-							
-						}
-					if(tries==timeouts){ // if reaches the maximum number of tries change the view
-						view_number++;
-						displayMessage("\nChanging the view to:" + view_number);
-						resend();
-						tries = 0;
-					}
-					else{
-						resend(); // resend the request
-						tries++;
-					}
-				}
-						
-			}
-
-		}; //end watch dog timer thread
-	*/
+	
 } // end class Client
