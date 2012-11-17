@@ -8,9 +8,9 @@ public class ClientTest
 {
 	public static void main( String args[] )
 	{
-		int clientId = 3;
+		int clientId = 5;
 		Client application1 = new Client( clientId ); // create client			
-		application1.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+		//application1.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
 		//application1.waitForPackets(); // run client application
 		
 		

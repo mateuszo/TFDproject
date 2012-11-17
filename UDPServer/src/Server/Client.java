@@ -37,6 +37,12 @@ public class Client extends JFrame
 	private int serverPort;
 	private String serverAddress;
 	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};	
+	private boolean listenerActive;
+	private long timeout; // time that a client waits for the response
+	private int timeouts; // number of tries / resendings
+	private Request current; // stores current request here
+	private String prompt;
+	private WatchTimer watchDog;
 	
 	// set up GUI and DatagramSocket
 	public Client( int id)
@@ -50,17 +56,24 @@ public class Client extends JFrame
 		serverPort = 1021; //server port
 		serverAddress = "localhost"; // server IP address
 		view_number = 0; // initially the view number is 0
-		
+		listenerActive = true;
+		timeout = 3000; //number of milliseconds it waits for the response
+		timeouts = 1;
+		prompt = "Type message here";
+		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		enterField = new JTextField( "Type message here" );
-		enterField.setEditable(false);
+		
 		enterField.addActionListener(
 		new ActionListener()
 			{
 				public void actionPerformed( ActionEvent event )
 				{
-					//sent request
-					String message = event.getActionCommand();
-					sendRequest(message);
+					if(listenerActive){
+						//sent request
+						String message = event.getActionCommand();
+						sendRequest(message);
+					}
+					
 					
 				} // end actionPerformed
 			} // end inner class
@@ -97,7 +110,11 @@ public class Client extends JFrame
 				DatagramPacket receivePacket = new DatagramPacket(
 				data, data.length );
 				socket.receive( receivePacket ); // wait for packet
-				
+
+
+				watchDog.interrupt(); //stop the timer
+				listenerActive = true;
+				enterField.setEditable(true);
 				
 				// display packet contents
 				displayMessage( "\n\tPacket received:" + 
@@ -138,6 +155,8 @@ public class Client extends JFrame
 		message.s = seq_number;
 		message.op = msg;
 		
+		current = message;
+		
 		String str_msg = message.toString(); //generate string message
 		displayArea.append( "\nCLI"+c_id+" Sending packet containing: " + str_msg + "\n" );
 				
@@ -151,16 +170,44 @@ public class Client extends JFrame
 			displayArea.setCaretPosition(
 			displayArea.getText().length() );
 			seq_number++; //increment seq_number
+			watchDog = new WatchTimer();
+			listenerActive = false;
+			enterField.setEditable(false);
+			
 		}
 		catch ( IOException ioException )
 		{
 			displayMessage( ioException.toString() + "\n" );
 			ioException.printStackTrace();
 		} // end catch
+	} // end send request
+	
+
+	//request re-sender
+	private void resend() {
+			
 		
+		String str_msg = current.toString(); //generate string message
+		displayArea.append( "\nCLI"+c_id+" Re-sending packet no: " + current.s + "\n" );
+				
+		byte data[] = str_msg.getBytes(); // convert to bytes
+		 
+		try{									
+			DatagramPacket sendPacket = new DatagramPacket( data, data.length, InetAddress.getByName(
+					config[view_number%config.length][0]), Integer.parseInt(config[view_number%config.length][1]) );
+			socket.send( sendPacket ); // send packet
+			displayArea.append( "Packet re-sent\n" );
+			displayArea.setCaretPosition(
+			displayArea.getText().length() );
+			
+			
+		}
+		catch ( IOException ioException )
+		{
+			displayMessage( ioException.toString() + "\n" );
+			ioException.printStackTrace();
+		} // end catch
 	}
-	
-	
 	//auto message sender
 	Thread msgSender = new Thread(){
 		public void run(){
@@ -171,6 +218,7 @@ public class Client extends JFrame
 				}
 				catch (InterruptedException e){
 					e.printStackTrace();
+					break;
 				}
 				finally{
 					sendRequest("Automatic Request:" + arq);
@@ -179,4 +227,68 @@ public class Client extends JFrame
 			}
 		}
 	};
+
+
+	
+	//watch dog timer on client. waits for reply for some time after sending the message. if the reply is not received it resends the request. after one resending it changes the view
+	public class WatchTimer extends Thread{
+		public WatchTimer(){
+			start();
+		}
+		public void run(){
+			int tries = 0; //number of tries already performed
+			boolean stop = false;
+			while(!stop){
+				try {
+						sleep(timeout); // sleeps for the timeout
+					} catch (InterruptedException e) {
+						displayMessage("\ninterrupted!");
+						//listenerActive = true;
+						stop = true;
+						return;						
+					}
+				if(tries==timeouts){ // if reaches the maximum number of tries change the view
+					view_number++;
+					displayMessage("\nChanging the view to:" + view_number);
+					resend();
+					tries = 0;
+				}
+				else{
+					displayMessage("\nresend!");
+					resend(); // resend the request
+					tries++;
+				}
+			}
+					
+		}
+	}
+	/*
+	Thread watchTimer = new Thread(){
+			public void run(){
+				int tries = 0; //number of tries already performed
+				boolean stop = false;
+				while(!stop){
+					try {
+							sleep(timeout); // sleeps for the timeout
+						} catch (InterruptedException e) {
+							
+							stop = true;
+							
+						}
+					if(tries==timeouts){ // if reaches the maximum number of tries change the view
+						view_number++;
+						displayMessage("\nChanging the view to:" + view_number);
+						resend();
+						tries = 0;
+					}
+					else{
+						resend(); // resend the request
+						tries++;
+					}
+				}
+						
+			}
+
+		}; //end watch dog timer thread
+	*/
 } // end class Client

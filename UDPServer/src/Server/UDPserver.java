@@ -108,7 +108,7 @@ public class UDPserver extends JFrame {
 			 System.exit( 1 );
 		 } // end catch
 		 
-		 
+		
 		 if(id==state.view_number){ //starts heartbeat timer for primary only
 			 heartbeatTimer.start(); // starts heartbeat timer
 		 }
@@ -851,21 +851,24 @@ public class UDPserver extends JFrame {
 
 	
 	//watch dog timer on replicas. Checks every (Td + delta) if the message from primary was received. If not starts a view change.
-	Thread watchTimer = new Thread(){
+	private Thread watchTimer = new Thread(){
 		public void run(){
 			long timeoutPlusDelay = timeout + transmissionDelay;
 			long sleepTime = timeoutPlusDelay; //time to sleep
 			long receiveInterval;
-			while(true){
+			boolean stop = false;
+			while(!stop){
 				try{
 					// displayMessage("\nWatchDog timer goes to sleep for: " + sleepTime + " miliseconds");
 					sleep(sleepTime); //sleeps for the given time 
 					receiveInterval = System.currentTimeMillis() - lastReceive; //calculates the time period between now and last receive 
 					// displayMessage("\ncurrent time: " + System.currentTimeMillis() + " receive interval: " + receiveInterval );
 					if(receiveInterval >= timeoutPlusDelay){ //checks if the time was exceeded
+						stop = true;
 						displayMessage("\nTimeout! Primary is dead!");
 						viewChange(); //initialize view-change procedure
-						break; //ends timer thread
+						
+						// return; //ends timer thread
 					}
 					else{
 						displayMessage("\nPrimary is alive!");
