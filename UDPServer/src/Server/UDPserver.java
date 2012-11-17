@@ -343,11 +343,17 @@ public class UDPserver extends JFrame {
 		
 		//put broadcast here
 		bcast(data);
+		
+		//here the new primary prepares for his duties
 		displayMessage("\nStartView sent to all!\n Now I'm the new primary, waiting for new requests.");
+	    state.status="normal"; 
+	    heartbeatTimer.start(); // starts heartbeat timer
 		
 		
 	}
 	
+	
+
 	//heartbeat sender
 	private void sendHeartbeat() throws IOException{
 		Heartbeat heart = new Heartbeat();
@@ -601,7 +607,6 @@ public class UDPserver extends JFrame {
 			//sendStartView(doviewchange_msg);			//send View Change
 			 try {
 				    sendStartView(bestDoViewChange(doViewchange.v));
-				    state.status="normal"; 
 				   } catch (IOException e) {
 				    e.printStackTrace();
 				   }  //send ViewChange msg
@@ -623,7 +628,8 @@ public class UDPserver extends JFrame {
 		
 		state.status="normal";
 		state.last_norm_view=startView.v;
-		
+		watchTimer.start(); //start watch dog/failure detector on replicas
+
 		
 		//update client table
 		

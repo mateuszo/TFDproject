@@ -33,8 +33,10 @@ public class Client extends JFrame
 	private DatagramSocket socket; // socket to connect to server
 	private int c_id; //clients id
 	private int seq_number; //number of the most recent request
+	private int view_number; //the view number
 	private int serverPort;
 	private String serverAddress;
+	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};	
 	
 	// set up GUI and DatagramSocket
 	public Client( int id)
@@ -47,9 +49,10 @@ public class Client extends JFrame
 		seq_number = 1;  //message sequence number
 		serverPort = 1021; //server port
 		serverAddress = "localhost"; // server IP address
-		
+		view_number = 0; // initially the view number is 0
 		
 		enterField = new JTextField( "Type message here" );
+		enterField.setEditable(false);
 		enterField.addActionListener(
 		new ActionListener()
 			{
@@ -58,6 +61,7 @@ public class Client extends JFrame
 					//sent request
 					String message = event.getActionCommand();
 					sendRequest(message);
+					
 				} // end actionPerformed
 			} // end inner class
 		); // end call to addActionListener
@@ -140,7 +144,8 @@ public class Client extends JFrame
 		byte data[] = str_msg.getBytes(); // convert to bytes
 		 
 		try{									
-			DatagramPacket sendPacket = new DatagramPacket( data, data.length, InetAddress.getLocalHost(), serverPort );
+			DatagramPacket sendPacket = new DatagramPacket( data, data.length, InetAddress.getByName(
+					config[view_number%config.length][0]), Integer.parseInt(config[view_number%config.length][1]) );
 			socket.send( sendPacket ); // send packet
 			displayArea.append( "Packet sent\n" );
 			displayArea.setCaretPosition(

@@ -62,8 +62,10 @@ public class Util {
 	   	 	for (int idx=0;idx<arrayOfRequests.length;idx++){
 	   	 		arrayOfRequests[idx]=arrayOfRequests[idx].replace(";[", "");	//takes out the [
 	   	 		arrayOfRequests[idx]=arrayOfRequests[idx].replace("]", "");		//takes out the ]
-	   	 		request_msg = fromString(arrayOfRequests[idx]);					//Transforms the string in message
-	   	 		temp_log.add((Request) request_msg);							//adds to the temporary log
+		   	 	if (!arrayOfRequests[idx].isEmpty()){
+		            request_msg = fromString(arrayOfRequests[idx]);     //Transforms the string in message
+		            temp_log.add((Request) request_msg);       //adds to the temporary log
+		           }
 	   	 	}
 	   	
 	   	 	return temp_log;
