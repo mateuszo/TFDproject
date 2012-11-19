@@ -290,7 +290,7 @@ public class UDPserver extends JFrame {
 		sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName(cli_add), cli_port );
 			
 		socket.send( sendPacket1 );
-		displayMessage( "\nReply sent" );
+		displayMessage( "\nReply sent to: " +cli_add+"@"+cli_port );
 			
 	}// end reply sender
 	
@@ -424,11 +424,16 @@ public class UDPserver extends JFrame {
 	//private void processRequest(Request req_msg){		//30-10-2012 - RO
 	private void processRequest(Request req_msg, InetAddress cli_add, int cli_port){	
 		
+		displayMessage("\n processing Request");
 		Request request = req_msg;
 		ClientTab cli_tab = state.new ClientTab();			//initialize client table
 			
 		if(state.client_table.containsKey(request.c)){ 		//checks if client table exists for this client
 			cli_tab =  state.client_table.get(request.c);	//loads client table
+			cli_tab.c_id = request.c;
+			cli_tab.c_add=cli_add.getHostName();   
+			cli_tab.c_port=cli_port;
+			state.client_table.put(request.c, cli_tab);
 		}
 		else{ 												//if not put new client table into state
 			cli_tab.c_id = request.c;
@@ -437,7 +442,7 @@ public class UDPserver extends JFrame {
 			state.client_table.put(request.c, cli_tab);
 		}
 			
-		if(request.s>cli_tab.recent){ //if the request has newer sequence number than the most recent 
+		if(request.s>=cli_tab.recent){ //if the request has newer sequence number than the most recent 
 				
 			state.log.add(request); //add request to the log
 			cli_tab.recent = request.s; //updates the sequence number in the client table
@@ -456,7 +461,8 @@ public class UDPserver extends JFrame {
 			state.op_number++; //increment the op_number
 			
 		}
-		else{ //request has been previously received
+		else{ 
+			displayMessage("\nrequest droped. Seq: " + request.s + " recent number: "+ cli_tab.recent);//request has been previously received
 			//drop request, resent reply
 		}
 	} //end request processor
@@ -530,9 +536,20 @@ public class UDPserver extends JFrame {
 
 			if (nr_ok>=(config.length-1)/2) {							//check if there are enough prepareOk's
 				try {
+					
 					//here request could be passed to the higher level application
-					state.commit_number=prepareOk.n;							//update commit number
-					sendReplyToClient(prepareOk, getReply(prepareOk.n));		//sendReply
+					//*************************
+					//			INTERFACE     *
+					//*************************
+					//here is the place where the request is meant to be sent to the application
+					
+					Request reply = getReply(prepareOk.n); // gets the request which shall be replied
+					
+					ClientTab cli_tab = state.client_table.get(reply.c);
+					cli_tab.commited = true;
+					state.client_table.put(reply.c, cli_tab);	// update commit
+					state.commit_number=prepareOk.n;			//update commit number
+					sendReplyToClient(prepareOk, reply);		//sendReply
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -544,6 +561,10 @@ public class UDPserver extends JFrame {
 	private void processHeartbeat(Heartbeat heart) {
 		if(state.view_number==heart.v){ // if the view number is appropriate
 			state.commit_number = heart.k; // update commit number
+			/*Request request = state.log.get(heart.k); //get the request with the k op number
+			ClientTab cli_tab = state.client_table.get(request.c);	//get client's tab
+			cli_tab.commited = true; //update the commit
+			state.client_table.put(request.c, cli_tab); //put it in the client table */
 			long currentTransmissionDelay = System.currentTimeMillis() - heart.sendTime; //transmission delay calculation
 			displayMessage("\nCurrent transmission delay: " + currentTransmissionDelay);
 		}

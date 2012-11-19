@@ -25,8 +25,7 @@ public class Client extends JFrame
 	 * 
 	 */
 	
-	//TODO
-	//Clients Timer
+	
 	private static final long serialVersionUID = 1L;
 	private JTextField enterField; // for entering messages
 	private JTextArea displayArea; // for displaying messages
@@ -63,6 +62,13 @@ public class Client extends JFrame
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		enterField = new JTextField( "Type message here" );
 		
+		
+		//***************************
+		//			INTERFACE		*
+		//***************************
+		//this is an interface for client's application
+		//it's an action listener - it listens for a client's action
+		//for now it only listens for a client's message
 		enterField.addActionListener(
 		new ActionListener()
 			{
@@ -78,6 +84,8 @@ public class Client extends JFrame
 				} // end actionPerformed
 			} // end inner class
 		); // end call to addActionListener
+		//INTERFACE END
+		
 		
 		add( enterField, BorderLayout.NORTH );
 			
