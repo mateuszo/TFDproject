@@ -544,11 +544,13 @@ public class UDPserver extends JFrame {
 					//here is the place where the request is meant to be sent to the application
 					
 					Request reply = getReply(prepareOk.n); // gets the request which shall be replied
-					
+					state.commit_number=prepareOk.n;
+					/*
 					ClientTab cli_tab = state.client_table.get(reply.c);
 					cli_tab.commited = true;
 					state.client_table.put(reply.c, cli_tab);	// update commit
-					state.commit_number=prepareOk.n;			//update commit number
+								//update commit number
+					*/
 					sendReplyToClient(prepareOk, reply);		//sendReply
 				} catch (IOException e) {
 					e.printStackTrace();
