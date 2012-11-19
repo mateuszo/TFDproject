@@ -2,7 +2,7 @@
 package Server;
 
 
-	public class ServerTest
+	public class ServerTest2
 		{
 		
 			public static void main( String args[] )
@@ -10,7 +10,7 @@ package Server;
 			
 			//int firstArg = Integer.parseInt(args[0]);
 			//int replicaId = firstArg; // the replica id is given upon the application start 
-			int replicaId = 0; // to run replicas simply change this number and run this few times
+			int replicaId = 2; // to run replicas simply change this number and run this few times
 			
 			UDPserver application1 = new UDPserver( replicaId ); // create server
 			

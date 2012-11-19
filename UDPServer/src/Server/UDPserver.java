@@ -107,7 +107,7 @@ public class UDPserver extends JFrame {
 			 socketException.printStackTrace();
 			 System.exit( 1 );
 		 } // end catch
-		 
+		
 		
 		 if(id==state.view_number){ //starts heartbeat timer for primary only
 			 heartbeatTimer.start(); // starts heartbeat timer
@@ -211,9 +211,6 @@ public class UDPserver extends JFrame {
 	//								SENDERS
 	//********************************************************************* 
 
-
-	
-
 		
 	//Send PREPARE to replicas
 	private void sendPrepareToReplicas (Request received_req) throws IOException {
@@ -267,16 +264,16 @@ public class UDPserver extends JFrame {
 		
 	//Send REPLY to client
 	private void sendReplyToClient (PrepareOk prepareOk_msg, Request request_msg) throws IOException {
-		//reply sender - 30-10-2012 - RO
+		
 		String cli_add;
 		int cli_port;
 			
 		//generate message
 		Reply reply_msg = new Reply();
 			 
-		reply_msg.v = prepareOk_msg.v; 	//view number
-		reply_msg.s = request_msg.s; 		//original seq from request
-		reply_msg.x = request_msg.op + "- reply";		//????????
+		reply_msg.v = prepareOk_msg.v; 				//view number
+		reply_msg.s = request_msg.s; 				//original seq from request
+		reply_msg.x = request_msg.op + "- reply";	//reply
 			
 		String message = reply_msg.toString();
 		displayMessage( "\nSending reply to client!" );
@@ -284,7 +281,7 @@ public class UDPserver extends JFrame {
 			
 		cli_add=state.client_table.get(request_msg.c).c_add;
 		cli_port=state.client_table.get(request_msg.c).c_port;
-		//displayMessage( "\nIP: " + cli_add + "Port: " + cli_port );
+		
 		DatagramPacket sendPacket1 = null;
 		
 		sendPacket1 = new DatagramPacket( data, data.length, InetAddress.getByName(cli_add), cli_port );
@@ -885,40 +882,18 @@ public class UDPserver extends JFrame {
 			}
 		}
 	}
-	private Thread watchTimer = new Thread(){
-		public void run(){
-			long timeoutPlusDelay = timeout + transmissionDelay;
-			long sleepTime = timeoutPlusDelay; //time to sleep
-			long receiveInterval;
-			boolean stop = false;
-			while(!stop){
-				try{
-					// displayMessage("\nWatchDog timer goes to sleep for: " + sleepTime + " miliseconds");
-					sleep(sleepTime); //sleeps for the given time 
-					receiveInterval = System.currentTimeMillis() - lastReceive; //calculates the time period between now and last receive 
-					// displayMessage("\ncurrent time: " + System.currentTimeMillis() + " receive interval: " + receiveInterval );
-					if(receiveInterval >= timeoutPlusDelay){ //checks if the time was exceeded
-						stop = true;
-						displayMessage("\nTimeout! Primary is dead!");
-						viewChange(); //initialize view-change procedure
-						
-						// return; //ends timer thread
-					}
-					else{
-						displayMessage("\nPrimary is alive!");
-						sleepTime = timeoutPlusDelay - receiveInterval;
-					}
-					
-				}
-				catch (InterruptedException e){
-					e.printStackTrace();
-				}
 
-			}
-		}
-	}; //end watch dog timer thread
+	
+	public static void main( String args[] ){
+	
+	int replicaId;
+	
+	replicaId = Integer.parseInt(args[0]); // to run replicas simply change this number and run this few times
+	
+	UDPserver application1 = new UDPserver( replicaId); // create server
 	
 	
+	} // end main
 	
 }
 

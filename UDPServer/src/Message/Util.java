@@ -51,24 +51,25 @@ public class Util {
         
         return obj;
 	 }
-	    //Extracts the log from the startview msg to a new log
+	    
+	 //Extracts the log from the startview msg to a new log
 	 
-	    public static List<Request> tempLog(String str_request) {
+	 public static List<Request> tempLog(String str_request) {
 	   	 
-	    	String[] arrayOfRequests = str_request.split(", ");
-	   	 	Message request_msg;
-	   	 	List<Request> temp_log = new ArrayList<Request>();
+		 String[] arrayOfRequests = str_request.split(", ");
+		 Message request_msg;
+		 List<Request> temp_log = new ArrayList<Request>();
 	   	 
-	   	 	for (int idx=0;idx<arrayOfRequests.length;idx++){
-	   	 		arrayOfRequests[idx]=arrayOfRequests[idx].replace(";[", "");	//takes out the [
-	   	 		arrayOfRequests[idx]=arrayOfRequests[idx].replace("]", "");		//takes out the ]
-		   	 	if (!arrayOfRequests[idx].isEmpty()){
-		            request_msg = fromString(arrayOfRequests[idx]);     //Transforms the string in message
-		            temp_log.add((Request) request_msg);       //adds to the temporary log
-		           }
-	   	 	}
+		 for (int idx=0;idx<arrayOfRequests.length;idx++){
+			 arrayOfRequests[idx]=arrayOfRequests[idx].replace(";[", "");	//takes out the [
+			 arrayOfRequests[idx]=arrayOfRequests[idx].replace("]", "");		//takes out the ]
+			 if (!arrayOfRequests[idx].isEmpty()){
+				 request_msg = fromString(arrayOfRequests[idx]);     //Transforms the string in message
+				 temp_log.add((Request) request_msg);       //adds to the temporary log
+			 }
+	   	 }
 	   	
-	   	 	return temp_log;
+	   	 return temp_log;
 			      	 
-	    }
+	 }
 }

@@ -1,6 +1,7 @@
 package Message;
 
 public class Heartbeat extends Message {
+	
 	public int v; // view number
 	public int k; // commit number - op number of last committed request
 	public long sendTime; // timestamp
