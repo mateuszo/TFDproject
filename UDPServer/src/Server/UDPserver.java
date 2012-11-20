@@ -44,8 +44,8 @@ public class UDPserver extends JFrame {
 	private JTextField enterField; // for entering messages
 	private DatagramSocket socket; // socket to connect to client
 	//config should be loaded from file
-	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};		
-	private int[] ports = {1020,1021,1022};
+	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"},{"localhost","1023"},{"localhost","1024"}};		
+	
 	
 	private VRstate state;
 	

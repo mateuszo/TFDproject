@@ -35,7 +35,7 @@ public class Client extends JFrame
 	private int view_number; //the view number
 	private int serverPort;
 	private String serverAddress;
-	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"}};	
+	private String config[][]={{"localhost","1020"},{"localhost","1021"},{"localhost","1022"},{"localhost","1023"},{"localhost","1024"}};	
 	private boolean listenerActive;
 	private long timeout; // time that a client waits for the response
 	private int timeouts; // number of tries / resendings
@@ -124,6 +124,12 @@ public class Client extends JFrame
 				listenerActive = true;
 				enterField.setEditable(true);
 				
+				//***************************
+				//			INTERFACE		*
+				//***************************
+				//this is an interface for client's application
+				//this part receives the reply from the server 
+				//here the replay should be sent to the application
 				// display packet contents
 				displayMessage( "\n\tPacket received:" + 
 						"\nFrom host: "+ receivePacket.getAddress() +
